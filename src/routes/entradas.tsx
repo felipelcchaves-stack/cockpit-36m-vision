@@ -27,6 +27,7 @@ import {
   ENTRY_TYPES,
   ENTRY_VALUES,
   brl,
+  planoDestinacao,
   useCockpit,
   type EntryStatus,
   type EntryType,
