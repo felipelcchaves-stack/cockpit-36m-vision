@@ -607,15 +607,27 @@ function CrmReceitasReais() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="feito">Quantidade já realizada</Label>
-              <Input
-                id="feito"
-                inputMode="numeric"
-                value={form.quantidade_realizada}
-                onChange={(e) => setForm({ ...form, quantidade_realizada: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="feito">Quantidade já realizada</Label>
+                <Input
+                  id="feito"
+                  inputMode="numeric"
+                  value={form.quantidade_realizada}
+                  onChange={(e) => setForm({ ...form, quantidade_realizada: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="custo">Custo de operação (R$)</Label>
+                <Input
+                  id="custo"
+                  inputMode="numeric"
+                  value={form.custo_operacao}
+                  onChange={(e) => setForm({ ...form, custo_operacao: e.target.value })}
+                />
+              </div>
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="dr">Data do ritual</Label>
