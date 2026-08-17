@@ -2,39 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { CheckCircle2, CreditCard, Flame, Target } from "lucide-react";
-import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { AlvoExterminado } from "@/components/alvo-exterminado";
+import { AmortizarSheet, type AlvoAmortizacao } from "@/components/amortizar-sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { brl, useCockpit } from "@/lib/cockpit-store";
-import {
-  isCartao,
-  isPago,
-  isReservaBlindada,
-  killList,
-  sumPassivos,
-  useAtivos,
-  useDebitarAtivo,
-  usePassivos,
-} from "@/lib/cockpit-queries";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { isCartao, isPago, killList, sumPassivos, usePassivos } from "@/lib/cockpit-queries";
+
 
 export const Route = createFileRoute("/passivos")({
   head: () => ({
