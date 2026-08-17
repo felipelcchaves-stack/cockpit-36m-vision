@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { RefreshCw, TrendingUp } from "lucide-react";
+import { AlertTriangle, Pencil, RefreshCw, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ import {
   brlExato,
   curvaLastro,
   jurosDoDia,
+  rendimentoEstimado,
   resumoRendimento,
   taxaAnualAtivo,
 } from "@/lib/financeiro";
@@ -46,6 +47,7 @@ export function PainelLastro({ ativo }: { ativo: Ativo | undefined }) {
   const salvarTaxa = useSalvarTaxaAtivo();
 
   const [sheet, setSheet] = useState<"saldo" | "taxa" | null>(null);
+  const [comoRendimento, setComoRendimento] = useState(true);
   const [saldoReal, setSaldoReal] = useState("");
   const [taxa, setTaxa] = useState({ modo_taxa: "cdi", taxa_aa: "", pct_cdi: "", cdi_aa: "" });
 
@@ -66,6 +68,8 @@ export function PainelLastro({ ativo }: { ativo: Ativo | undefined }) {
   const curva = curvaLastro(rendimentos, ativo.id, 90);
   const taxaAa = taxaAnualAtivo(ativo);
   const porDia = jurosDoDia(ativo);
+  const est = rendimentoEstimado(ativo);
+  const desatualizado = est.corridos >= 7;
 
   const rodar = async () => {
     try {
@@ -87,8 +91,16 @@ export function PainelLastro({ ativo }: { ativo: Ativo | undefined }) {
       return;
     }
     try {
-      await ajustar.mutateAsync({ ativo, saldoReal: v });
-      toast.success("Saldo real do extrato registrado");
+      const r = await ajustar.mutateAsync({
+        ativo,
+        saldoReal: v,
+        rendimentoEstimado: comoRendimento ? est.valor : 0,
+      });
+      toast.success(
+        r.movimento !== 0
+          ? `Saldo atualizado — ${brl(Math.abs(r.juro))} de rendimento e ${brl(Math.abs(r.movimento))} de ${r.movimento < 0 ? "saída" : "entrada"}`
+          : "Saldo real do extrato registrado",
+      );
       setSheet(null);
     } catch {
       toast.error("Não foi possível registrar o ajuste");
@@ -123,7 +135,7 @@ export function PainelLastro({ ativo }: { ativo: Ativo | undefined }) {
           <div className="flex items-center gap-2 text-liquidity">
             <TrendingUp className="size-4" />
             <h2 className="text-sm font-semibold uppercase tracking-wider">
-              Lastro em CDB — rende todo dia útil
+              Lastro em CDB — saldo conferido por você
             </h2>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -135,12 +147,9 @@ export function PainelLastro({ ativo }: { ativo: Ativo | undefined }) {
           <Button size="sm" variant="secondary" onClick={() => setSheet("taxa")}>
             Taxa contratada
           </Button>
-          <Button size="sm" variant="secondary" onClick={() => setSheet("saldo")}>
-            Fechar saldo real
-          </Button>
-          <Button size="sm" onClick={() => void rodar()} disabled={render.isPending}>
-            <RefreshCw className={`size-3.5 ${render.isPending ? "animate-spin" : ""}`} />
-            Render agora
+          <Button size="sm" onClick={() => setSheet("saldo")}>
+            <Pencil className="size-3.5" />
+            Atualizar saldo
           </Button>
         </div>
       </div>
@@ -159,10 +168,38 @@ export function PainelLastro({ ativo }: { ativo: Ativo | undefined }) {
         ))}
       </div>
 
-      <p className="mt-3 text-[11px] text-muted-foreground">
-        No ritmo atual o lastro produz cerca de {brl(porDia)} por dia útil — aproximadamente{" "}
-        {brl(porDia * 21)} por mês, sem nenhum ritual novo.
-      </p>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/40 p-4">
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Rendimento estimado (não aplicado)
+          </p>
+          <p className="num mt-1 text-lg font-semibold text-liquidity">{brlExato(est.valor)}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {est.uteis === 0
+              ? `Nenhum dia útil desde a última conferência. Ritmo: ${brl(porDia)} por dia útil.`
+              : `${est.uteis} ${est.uteis === 1 ? "dia útil" : "dias úteis"} desde ${dataBRCurta(ativo.ultimo_fechamento)} · ritmo de ${brl(porDia)} por dia útil.`}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => void rodar()}
+          disabled={render.isPending || est.uteis === 0}
+        >
+          <RefreshCw className={`size-3.5 ${render.isPending ? "animate-spin" : ""}`} />
+          Aplicar estimativa
+        </Button>
+      </div>
+
+      {desatualizado && (
+        <div className="mt-3 flex items-start gap-2 rounded-xl border border-gold/30 bg-gold/10 p-3 text-xs text-gold">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <span>
+            Faz {est.corridos} dias que o saldo do lastro não é conferido com o extrato. Abra o app do
+            banco e use "Atualizar saldo" — o número do Poder de Fogo depende disso.
+          </span>
+        </div>
+      )}
 
       <div className="mt-4 h-44 w-full">
         {curva.length > 1 ? (
@@ -238,6 +275,18 @@ export function PainelLastro({ ativo }: { ativo: Ativo | undefined }) {
                   onChange={(e) => setSaldoReal(e.target.value)}
                 />
               </div>
+              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border bg-card/40 p-3">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4 accent-[var(--liquidity)]"
+                  checked={comoRendimento}
+                  onChange={(e) => setComoRendimento(e.target.checked)}
+                />
+                <span className="text-[11px] text-muted-foreground">
+                  Separar {brlExato(est.valor)} de rendimento estimado do restante. O que sobrar da
+                  diferença é registrado como movimentação (saque, depósito, taxas).
+                </span>
+              </label>
               <p className="text-[11px] text-muted-foreground">
                 Saldo no cockpit hoje: {brlExato(ativo.valor)}.
               </p>
