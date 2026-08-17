@@ -1,24 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Bomb, Landmark, Lock, Rocket } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { PainelLastro } from "@/components/painel-lastro";
+import { AmortizarSheet, type AlvoAmortizacao } from "@/components/amortizar-sheet";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { brl } from "@/lib/cockpit-store";
-import { useAtivos, usePassivos } from "@/lib/cockpit-queries";
+import { useAtivos, usePassivos, useTransacoes } from "@/lib/cockpit-queries";
 import {
   APORTE_DIA_D,
   LASTRO_INVESTIMENTO,
   QUITACAO_CONSIGNADO,
   brlExato,
+  cascataFase1DiaD,
   cofreBlindado,
+  exterminioRealizado,
   simularDiaD,
   valorAtivo,
   valorPassivo,
 } from "@/lib/financeiro";
+
 
 export const Route = createFileRoute("/dia-d")({
   head: () => ({
