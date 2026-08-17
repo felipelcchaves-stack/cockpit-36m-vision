@@ -4,12 +4,16 @@ import { motion } from "motion/react";
 import { Crosshair, Flame, Lock, Rocket, Sparkles, Target } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
+import { AmortizarSheet, type AlvoAmortizacao } from "@/components/amortizar-sheet";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { brl, useCockpit } from "@/lib/cockpit-store";
 import {
+  killList,
   useAtivos,
   useCrmReceitas,
   usePassivos,
+  useTransacoes,
   type CrmReceita,
 } from "@/lib/cockpit-queries";
 
@@ -19,7 +23,9 @@ import {
   RETIRADA_SEGURA,
   brlExato,
   cascataFase1DiaD,
+  exterminioRealizado,
 } from "@/lib/financeiro";
+
 
 export const Route = createFileRoute("/ofensiva")({
   head: () => ({
