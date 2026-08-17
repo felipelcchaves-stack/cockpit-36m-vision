@@ -226,7 +226,7 @@ function Dashboard() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -260,11 +260,39 @@ function Dashboard() {
           <p className="num mt-3 text-2xl font-semibold">{brl(cartao.faturaProjetada)}</p>
           <p className="mt-2 text-[11px] text-muted-foreground">
             {cartao.excede
-              ? `Fatura projetada supera a receita livre em ${brl(cartao.gap)}. Corte gasto agora — zero rotativo, zero parcelamento.`
-              : "Fatura dentro da receita livre do mês. Pagamento integral antes do vencimento."}
+              ? `Fatura projetada supera a receita livre (${brl(cartao.receitaLivre)}) em ${brl(cartao.gap)}. Sem caixa para pagar à vista, a compra não é feita — zero rotativo, zero parcelamento.`
+              : `Dentro da receita livre do mês (${brl(cartao.receitaLivre)}). Pagamento integral antes do vencimento.`}
           </p>
         </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.28 }}
+          className="rounded-2xl border border-gold/25 bg-card/40 p-5"
+        >
+          <div className="flex items-center gap-2 text-gold">
+            <Target className="size-4" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider">Renda Passiva</h2>
+          </div>
+          <p className="num mt-3 text-2xl font-semibold gold-text">
+            {brl(RENDA_PASSIVA_ALVO)}
+            <span className="text-sm font-normal text-muted-foreground">/mês alvo</span>
+          </p>
+          <Progress value={pctRenda} className="mt-3 h-1.5 bg-secondary" />
+          <p className="num mt-2 text-[11px] text-muted-foreground">
+            Hoje o lastro geraria {brl(rendaHoje)}/mês a 0,5% a.m. ({pctRenda.toFixed(1)}% do alvo).
+          </p>
+        </motion.div>
+
+        <AporteCard
+          competencia={competencia}
+          realizado={aporteMes?.realizado ?? 0}
+          disciplina={disciplina}
+        />
       </div>
+
+
 
 
 
