@@ -76,12 +76,11 @@ function Dashboard() {
   const freeSurplus = liquidity - totalDebt;
   const passivosQuitados = passivosRows.filter((p) => isPago(p.status)).length;
 
-  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago"];
-  const chartData = months.map((m, i) => ({
-    mes: m,
-    liquidez: Math.round(liquidity * (0.42 + i * 0.083)),
-    passivos: Math.round(totalDebt * (1.35 - i * 0.05)),
-  }));
+  const reserva = cofreBlindado(ativosRows);
+  const projecao = projetar36M(Math.max(0, freeSurplus));
+  const cruzamento = cruzamentoMeta(projecao);
+  const cartao = alertaCartao(FATURA_CARTAO, Math.max(0, freeSurplus));
+
 
   const paidCreditors = creditors.filter((c) => c.balance === 0).length;
   const nextTarget = [...creditors].filter((c) => c.balance > 0).sort((a, b) => a.balance - b.balance)[0];
