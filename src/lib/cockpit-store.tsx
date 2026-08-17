@@ -78,57 +78,6 @@ const initialTx: Tx[] = [
   { id: "seed-20", date: today(), description: "Amortização Nubank", kind: "Amortização", amount: 6200 },
 ];
 
-const initialPhases: Phase[] = [
-  {
-    id: "f1",
-    title: "Ofensiva Sazonal",
-    subtitle: "Pré-Dia D — captação máxima",
-    tasks: [
-      { id: "seed-21", label: "Mapear 20 leads Premium", done: true },
-      { id: "seed-22", label: "Fechar 3 Oye 30k", done: true },
-      { id: "seed-23", label: "Agenda de rituais lotada", done: false },
-    ],
-  },
-  {
-    id: "f2",
-    title: "Operação Dia D",
-    subtitle: "Liberação da liquidez travada",
-    tasks: [
-      { id: "seed-24", label: "Documentação do aporte", done: true },
-      { id: "seed-25", label: "Confirmar R$ 700.000 de aporte", done: false },
-      { id: "seed-26", label: "Plano de alocação assinado", done: false },
-    ],
-  },
-  {
-    id: "f3",
-    title: "Ponte de 90 Dias",
-    subtitle: "Queima acelerada de passivos",
-    tasks: [
-      { id: "seed-27", label: "Quitar Oluwo", done: false },
-      { id: "seed-28", label: "Renegociar Leka Novo", done: false },
-      { id: "seed-29", label: "Zerar cartões rotativos", done: false },
-    ],
-  },
-  {
-    id: "f4",
-    title: "A Virada de Chave",
-    subtitle: "De sobrevivência a acumulação",
-    tasks: [
-      { id: "seed-30", label: "Reserva de 6 meses", done: false },
-      { id: "seed-31", label: "Primeiro aporte em renda fixa", done: false },
-    ],
-  },
-  {
-    id: "f5",
-    title: "O Império dos 36M",
-    subtitle: "Patrimônio consolidado",
-    tasks: [
-      { id: "seed-32", label: "Estrutura societária", done: false },
-      { id: "seed-33", label: "Carteira diversificada 36M", done: false },
-    ],
-  },
-];
-
 const BASE_LIQUIDITY = 432935;
 export const APORTE_PREVISTO = 700000;
 export const META_PATRIMONIO = 36000000;
@@ -137,7 +86,6 @@ type Ctx = {
   clients: Client[];
   creditors: Creditor[];
   transactions: Tx[];
-  phases: Phase[];
   liquidity: number;
   totalDebt: number;
   paidRevenue: number;
@@ -149,7 +97,6 @@ type Ctx = {
   removeClient: (id: string) => void;
   amortize: (creditorId: string, amount: number) => void;
   addTx: (t: Omit<Tx, "id">) => void;
-  toggleTask: (phaseId: string, taskId: string) => void;
 };
 
 const CockpitContext = createContext<Ctx | null>(null);
@@ -161,7 +108,6 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
   const removerCliente = useRemoverCliente();
   const [creditors, setCreditors] = useState(initialCreditors);
   const [transactions, setTransactions] = useState(initialTx);
-  const [phases, setPhases] = useState(initialPhases);
 
   const clients = useMemo<Client[]>(
     () =>
@@ -200,7 +146,6 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
       clients,
       creditors,
       transactions,
-      phases,
       liquidity,
       totalDebt,
       paidRevenue,
@@ -214,6 +159,7 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
           status: c.status,
           valor: ENTRY_VALUES[c.type],
           nota: c.note ?? null,
+          data_ritual: c.ritualDate ?? null,
         }),
       setClientStatus: (id, status) => atualizarStatusCliente.mutateAsync({ id, status }),
       removeClient: (id) => removerCliente.mutateAsync(id),
@@ -237,19 +183,8 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
         ]);
       },
       addTx: (t) => setTransactions((prev) => [{ ...t, id: uid() }, ...prev]),
-      toggleTask: (phaseId, taskId) =>
-        setPhases((prev) =>
-          prev.map((p) =>
-            p.id === phaseId
-              ? {
-                  ...p,
-                  tasks: p.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t)),
-                }
-              : p,
-          ),
-        ),
     };
-  }, [clients, creditors, transactions, phases]);
+  }, [clients, creditors, transactions]);
 
   return <CockpitContext.Provider value={value}>{children}</CockpitContext.Provider>;
 }
