@@ -119,6 +119,7 @@ function Historico() {
           <div className="grid gap-3 border-b border-border/60 p-5 sm:grid-cols-3">
             {[
               { label: "Juro no mês", value: resumo.mes, tone: "text-liquidity" },
+              { label: "Entradas no mês", value: resumo.entradasMes, tone: "text-liquidity" },
               { label: "Saques no mês", value: -resumo.saquesMes, tone: "text-debt" },
               { label: "Juro acumulado", value: resumo.total, tone: "gold-text" },
             ].map((m) => (
@@ -162,13 +163,17 @@ function Historico() {
                     {(() => {
                       const cat = categoriaExtrato(r);
                       const tone =
-                        cat === "saque"
+                        cat === "entrada"
+                          ? "border-liquidity/40 bg-liquidity/15 text-liquidity"
+                          : cat === "saque"
                           ? "border-debt/30 bg-debt/10 text-debt"
                           : cat === "ajuste"
                             ? "border-gold/30 bg-gold/10 text-gold"
                             : "border-liquidity/30 bg-liquidity/10 text-liquidity";
                       const label =
-                        cat === "saque"
+                        cat === "entrada"
+                          ? `Entrada · ${motivoExtrato(r) || "aporte"}`
+                          : cat === "saque"
                           ? (motivoExtrato(r) || "Saque")
                           : cat === "ajuste"
                             ? "Ajuste do extrato"
