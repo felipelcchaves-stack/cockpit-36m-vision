@@ -32,6 +32,9 @@ import {
   type EntryType,
 } from "@/lib/cockpit-store";
 import {
+  dataBR,
+  diasAte,
+  prazoLabel,
   potencial,
   progresso,
   realizado,
@@ -593,5 +596,25 @@ function CrmReceitasReais() {
         </AlertDialogContent>
       </AlertDialog>
     </motion.section>
+  );
+}
+
+function PrazoCell({ ritual, pagamento }: { ritual: string | null; pagamento: string | null }) {
+  const dias = diasAte(pagamento);
+  const label = prazoLabel(pagamento);
+  const tone =
+    dias === null
+      ? "text-muted-foreground"
+      : dias < 0
+        ? "text-debt"
+        : dias <= 7
+          ? "text-gold"
+          : "text-liquidity";
+  return (
+    <div className="text-[11px] leading-tight">
+      <p className="text-muted-foreground">Ritual: {dataBR(ritual)}</p>
+      <p className="text-muted-foreground">Pgto: {dataBR(pagamento)}</p>
+      {label && <p className={`mt-0.5 font-medium ${tone}`}>{label}</p>}
+    </div>
   );
 }
