@@ -112,7 +112,7 @@ export type Database = {
           credor: string
           fase_quitacao: string | null
           id: number
-          ordem_extermínio: number | null
+          ordem_exterminio: number | null
           saldo_devedor: number
           status: string | null
         }
@@ -120,7 +120,7 @@ export type Database = {
           credor: string
           fase_quitacao?: string | null
           id?: number
-          ordem_extermínio?: number | null
+          ordem_exterminio?: number | null
           saldo_devedor: number
           status?: string | null
         }
@@ -128,7 +128,7 @@ export type Database = {
           credor?: string
           fase_quitacao?: string | null
           id?: number
-          ordem_extermínio?: number | null
+          ordem_exterminio?: number | null
           saldo_devedor?: number
           status?: string | null
         }
