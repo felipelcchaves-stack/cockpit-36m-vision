@@ -10,33 +10,91 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ComandoRouteImport } from './routes/comando'
+import { Route as EntradasRouteImport } from './routes/entradas'
+import { Route as HistoricoRouteImport } from './routes/historico'
+import { Route as PassivosRouteImport } from './routes/passivos'
+import { Route as RoadmapRouteImport } from './routes/roadmap'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComandoRoute = ComandoRouteImport.update({
+  id: '/comando',
+  path: '/comando',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EntradasRoute = EntradasRouteImport.update({
+  id: '/entradas',
+  path: '/entradas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoricoRoute = HistoricoRouteImport.update({
+  id: '/historico',
+  path: '/historico',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PassivosRoute = PassivosRouteImport.update({
+  id: '/passivos',
+  path: '/passivos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoadmapRoute = RoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/comando': typeof ComandoRoute
+  '/entradas': typeof EntradasRoute
+  '/historico': typeof HistoricoRoute
+  '/passivos': typeof PassivosRoute
+  '/roadmap': typeof RoadmapRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/comando': typeof ComandoRoute
+  '/entradas': typeof EntradasRoute
+  '/historico': typeof HistoricoRoute
+  '/passivos': typeof PassivosRoute
+  '/roadmap': typeof RoadmapRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/comando': typeof ComandoRoute
+  '/entradas': typeof EntradasRoute
+  '/historico': typeof HistoricoRoute
+  '/passivos': typeof PassivosRoute
+  '/roadmap': typeof RoadmapRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    '/' | '/comando' | '/entradas' | '/historico' | '/passivos' | '/roadmap'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/comando' | '/entradas' | '/historico' | '/passivos' | '/roadmap'
+  id:
+    | '__root__'
+    | '/'
+    | '/comando'
+    | '/entradas'
+    | '/historico'
+    | '/passivos'
+    | '/roadmap'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ComandoRoute: typeof ComandoRoute
+  EntradasRoute: typeof EntradasRoute
+  HistoricoRoute: typeof HistoricoRoute
+  PassivosRoute: typeof PassivosRoute
+  RoadmapRoute: typeof RoadmapRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +106,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/comando': {
+      id: '/comando'
+      path: '/comando'
+      fullPath: '/comando'
+      preLoaderRoute: typeof ComandoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/entradas': {
+      id: '/entradas'
+      path: '/entradas'
+      fullPath: '/entradas'
+      preLoaderRoute: typeof EntradasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/historico': {
+      id: '/historico'
+      path: '/historico'
+      fullPath: '/historico'
+      preLoaderRoute: typeof HistoricoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/passivos': {
+      id: '/passivos'
+      path: '/passivos'
+      fullPath: '/passivos'
+      preLoaderRoute: typeof PassivosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roadmap': {
+      id: '/roadmap'
+      path: '/roadmap'
+      fullPath: '/roadmap'
+      preLoaderRoute: typeof RoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ComandoRoute: ComandoRoute,
+  EntradasRoute: EntradasRoute,
+  HistoricoRoute: HistoricoRoute,
+  PassivosRoute: PassivosRoute,
+  RoadmapRoute: RoadmapRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
