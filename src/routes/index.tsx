@@ -12,7 +12,14 @@ import {
 import { ArrowDownRight, ArrowUpRight, Flame, Sparkles, Target, Wallet } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
-import { APORTE_PREVISTO, brl, useCockpit } from "@/lib/cockpit-store";
+import { brl, useCockpit } from "@/lib/cockpit-store";
+import {
+  isPago,
+  sumPassivos,
+  sumPoderDeFogo,
+  useAtivos,
+  usePassivos,
+} from "@/lib/cockpit-queries";
 import { Progress } from "@/components/ui/progress";
 
 export const Route = createFileRoute("/")({
@@ -35,8 +42,14 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
-  const { liquidity, totalDebt, freeSurplus, progress, creditors, clients, pipeline } =
-    useCockpit();
+  const { progress, creditors, clients, pipeline } = useCockpit();
+  const { data: passivosRows = [], isLoading: loadingPassivos } = usePassivos();
+  const { data: ativosRows = [], isLoading: loadingAtivos } = useAtivos();
+
+  const totalDebt = sumPassivos(passivosRows);
+  const liquidity = sumPoderDeFogo(ativosRows);
+  const freeSurplus = liquidity - totalDebt;
+  const passivosQuitados = passivosRows.filter((p) => isPago(p.status)).length;
 
   const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago"];
   const chartData = months.map((m, i) => ({
@@ -52,27 +65,27 @@ function Dashboard() {
   const cards = [
     {
       label: "Poder de Fogo Atual",
-      value: brl(liquidity),
-      hint: "Liquidez disponível em banco",
+      value: loadingAtivos ? "—" : brl(liquidity),
+      hint: "Aporte + Conta de Investimento",
       icon: Wallet,
       tone: "liquidity" as const,
-      delta: "+12,4%",
+      delta: "dados reais",
     },
     {
       label: "Sobra Livre — Dia D",
-      value: brl(freeSurplus),
-      hint: `Com aporte de ${brl(APORTE_PREVISTO)}`,
+      value: loadingAtivos || loadingPassivos ? "—" : brl(freeSurplus),
+      hint: "Poder de fogo menos passivos em aberto",
       icon: Sparkles,
       tone: "gold" as const,
       delta: "projetado",
     },
     {
       label: "Total de Passivos",
-      value: brl(totalDebt),
-      hint: `${paidCreditors} credor(es) extinto(s)`,
+      value: loadingPassivos ? "—" : brl(totalDebt),
+      hint: `${passivosQuitados} passivo(s) quitado(s)`,
       icon: Flame,
       tone: "debt" as const,
-      delta: "-8,1%",
+      delta: "dados reais",
     },
     {
       label: "Progresso Rumo aos 36M",
