@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EntradasRouteImport } from './routes/entradas'
 import { Route as PassivosRouteImport } from './routes/passivos'
+import { Route as RoadmapRouteImport } from './routes/roadmap'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +29,44 @@ const PassivosRoute = PassivosRouteImport.update({
   path: '/passivos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RoadmapRoute = RoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/entradas': typeof EntradasRoute
   '/passivos': typeof PassivosRoute
+  '/roadmap': typeof RoadmapRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/entradas': typeof EntradasRoute
   '/passivos': typeof PassivosRoute
+  '/roadmap': typeof RoadmapRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/entradas': typeof EntradasRoute
   '/passivos': typeof PassivosRoute
+  '/roadmap': typeof RoadmapRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/entradas' | '/passivos'
+  fullPaths: '/' | '/entradas' | '/passivos' | '/roadmap'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/entradas' | '/passivos'
-  id: '__root__' | '/' | '/entradas' | '/passivos'
+  to: '/' | '/entradas' | '/passivos' | '/roadmap'
+  id: '__root__' | '/' | '/entradas' | '/passivos' | '/roadmap'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EntradasRoute: typeof EntradasRoute
   PassivosRoute: typeof PassivosRoute
+  RoadmapRoute: typeof RoadmapRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PassivosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/roadmap': {
+      id: '/roadmap'
+      path: '/roadmap'
+      fullPath: '/roadmap'
+      preLoaderRoute: typeof RoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EntradasRoute: EntradasRoute,
   PassivosRoute: PassivosRoute,
+  RoadmapRoute: RoadmapRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
