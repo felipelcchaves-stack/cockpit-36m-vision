@@ -177,7 +177,6 @@ function Comando() {
             </Button>
           </form>
 
-          </form>
         </div>
       </div>
     </div>
