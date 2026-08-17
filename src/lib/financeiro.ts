@@ -248,18 +248,22 @@ export const jurosDoDia = (a: Ativo) => a.valor * diariaDeAnual(taxaAnualAtivo(a
 
 const soma = (rows: Rendimento[]) => rows.reduce((s, r) => s + r.juros, 0);
 
-export type CategoriaExtrato = "rendimento" | "saque" | "ajuste";
+export type CategoriaExtrato = "rendimento" | "saque" | "ajuste" | "entrada";
 
 /** Classifica a linha do extrato do lastro. */
 export function categoriaExtrato(r: Rendimento): CategoriaExtrato {
   if (r.origem.startsWith("saque")) return "saque";
+  if (r.origem.startsWith("entrada")) return "entrada";
   if (r.origem === "ajuste") return "ajuste";
   return "rendimento";
 }
 
 /** Motivo legível de um saque ("saque:Amortização Agiota"). */
-export const motivoExtrato = (r: Rendimento) =>
-  r.origem.startsWith("saque:") ? r.origem.slice(6) : "";
+export const motivoExtrato = (r: Rendimento) => {
+  if (r.origem.startsWith("saque:")) return r.origem.slice(6);
+  if (r.origem.startsWith("entrada:")) return r.origem.slice(8);
+  return "";
+};
 
 export function resumoRendimento(rows: Rendimento[], ativoId?: number) {
   const base = ativoId ? rows.filter((r) => r.ativo_id === ativoId) : rows;
@@ -273,6 +277,7 @@ export function resumoRendimento(rows: Rendimento[], ativoId?: number) {
     total: soma(juros),
     saquesMes: Math.abs(soma(doMes.filter((r) => categoriaExtrato(r) === "saque"))),
     ajustesMes: soma(doMes.filter((r) => categoriaExtrato(r) === "ajuste")),
+    entradasMes: soma(doMes.filter((r) => categoriaExtrato(r) === "entrada")),
     lancamentos: base.length,
   };
 }

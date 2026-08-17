@@ -62,7 +62,7 @@ const faseTone = (fase: string | null) => {
 
 function Passivos() {
   const { data: rows = [], isLoading, error } = usePassivos();
-  const { creditors, amortize } = useCockpit();
+  const { creditors, amortize, addTx } = useCockpit();
   const { data: ativos = [] } = useAtivos();
   const debitar = useDebitarAtivo();
 
@@ -127,6 +127,13 @@ function Passivos() {
           ativo: fonte,
           valor: pago,
           motivo: `Amortização ${alvo.nome}`,
+        });
+        // Contrapartida do resgate: o saldo sai do ativo e entra no caixa que pagou a dívida.
+        addTx({
+          date: new Date().toISOString().slice(0, 10),
+          description: `Resgate ${fonte.nome} — Amortização ${alvo.nome}`,
+          kind: "Receita",
+          amount: pago,
         });
       } catch {
         toast.error("Passivo abatido, mas não consegui debitar a origem do dinheiro");

@@ -4,6 +4,7 @@ import {
   alvosVivos,
   isPago,
   useAmortizarPassivo,
+  useCreditarAtivo,
   useAtivos,
   useAtualizarStatusCliente,
   useClientes,
@@ -77,6 +78,25 @@ export const META_PATRIMONIO = META;
 /** Lei da destinação: receita religiosa mata Agiota e Oluwo antes do Dia D. */
 const ALVOS_PRE_DIA_D = ["agiota", "oluwo"];
 
+export type FatiaDestinacao = { id: number; credor: string; valor: number };
+
+/** Prévia de como um valor líquido será distribuído: Kill List primeiro, sobra no CDB. */
+export function planoDestinacao(passivos: Passivo[], liquido: number) {
+  const alvos = alvosVivos(passivos).filter((p) =>
+    ALVOS_PRE_DIA_D.some((t) => p.credor.toLowerCase().includes(t)),
+  );
+  const fatias: FatiaDestinacao[] = [];
+  let restante = Math.max(0, liquido);
+  for (const alvo of alvos) {
+    if (restante <= 0) break;
+    const abate = Math.min(restante, alvo.saldo_devedor);
+    if (abate <= 0) continue;
+    fatias.push({ id: alvo.id, credor: alvo.credor, valor: abate });
+    restante -= abate;
+  }
+  return { fatias, sobra: restante };
+}
+
 type Ctx = {
   clients: Client[];
   creditors: Creditor[];
@@ -90,6 +110,12 @@ type Ctx = {
   progress: number;
   addClient: (c: Omit<Client, "id">) => void;
   setClientStatus: (id: string, status: EntryStatus) => void;
+  receberRitual: (args: {
+    id: string;
+    recebido: number;
+    custo: number;
+    ativoId: number | null;
+  }) => Promise<void>;
   removeClient: (id: string) => void;
   amortize: (creditorId: string, amount: number) => void;
   addTx: (t: Omit<Tx, "id">) => void;
@@ -108,6 +134,7 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
   const removerCliente = useRemoverCliente();
   const amortizarPassivo = useAmortizarPassivo();
   const criarTransacao = useCriarTransacao();
+  const creditarAtivo = useCreditarAtivo();
 
   const clients = useMemo<Client[]>(
     () =>
@@ -171,32 +198,38 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
     const freeSurplus = liquidity - totalDebt;
     const progress = Math.max(0, freeSurplus / META_PATRIMONIO) * 100;
 
-    /** Direciona uma receita para o Kill List pré-Dia D (Agiota → Oluwo). */
-    const destinarReceita = async (valor: number, origem: string) => {
-      const alvos = alvosVivos(passivoRows ?? []).filter((p: Passivo) =>
-        ALVOS_PRE_DIA_D.some((t) => p.credor.toLowerCase().includes(t)),
-      );
-      let restante = valor;
-      for (const alvo of alvos) {
-        if (restante <= 0) break;
-        const abate = Math.min(restante, alvo.saldo_devedor);
-        restante -= abate;
-        await amortizarPassivo.mutateAsync({ id: alvo.id, valor: abate });
+    /** Direciona uma receita líquida: Kill List pré-Dia D primeiro, sobra no CDB. */
+    const destinarReceita = async (liquido: number, origem: string, ativoId: number | null) => {
+      const { fatias, sobra } = planoDestinacao(passivoRows ?? [], liquido);
+      for (const fatia of fatias) {
+        await amortizarPassivo.mutateAsync({ id: fatia.id, valor: fatia.valor });
         await criarTransacao.mutateAsync({
           data: today(),
-          descricao: `Extermínio ${alvo.credor} — ${origem}`,
+          descricao: `Extermínio ${fatia.credor} — ${origem}`,
           tipo: "Amortização",
-          valor: abate,
-          passivo_id: alvo.id,
+          valor: fatia.valor,
+          passivo_id: fatia.id,
         });
       }
-      if (restante > 0) {
-        await criarTransacao.mutateAsync({
-          data: today(),
-          descricao: `${origem} — troco para Poder de Fogo`,
-          tipo: "Receita",
-          valor: restante,
-        });
+      if (sobra > 0) {
+        const destino = (ativoRows ?? []).find((a) => a.id === ativoId);
+        if (destino) {
+          await creditarAtivo.mutateAsync({ ativo: destino, valor: sobra, motivo: origem });
+          // Contrapartida: o caixa livre vira saldo aplicado, sem contar duas vezes.
+          await criarTransacao.mutateAsync({
+            data: today(),
+            descricao: `Aplicação em ${destino.nome} — ${origem}`,
+            tipo: "Despesa",
+            valor: sobra,
+          });
+        } else {
+          await criarTransacao.mutateAsync({
+            data: today(),
+            descricao: `${origem} — troco para Poder de Fogo`,
+            tipo: "Receita",
+            valor: sobra,
+          });
+        }
       }
     };
 
@@ -221,13 +254,28 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
           data_ritual: c.ritualDate ?? null,
         }),
       setClientStatus: (id, status) => {
-        void (async () => {
-          await atualizarStatusCliente.mutateAsync({ id, status });
-          if (status !== "Pago") return;
-          const cliente = clients.find((c) => c.id === id);
-          if (!cliente) return;
-          await destinarReceita(ENTRY_VALUES[cliente.type], `${cliente.type} — ${cliente.name}`);
-        })();
+        void atualizarStatusCliente.mutateAsync({ id, status });
+      },
+      receberRitual: async ({ id, recebido, custo, ativoId }) => {
+        const cliente = clients.find((c) => c.id === id);
+        if (!cliente) return;
+        const origem = `${cliente.type} — ${cliente.name}`;
+        await atualizarStatusCliente.mutateAsync({ id, status: "Pago" });
+        await criarTransacao.mutateAsync({
+          data: today(),
+          descricao: `Recebimento ${origem}`,
+          tipo: "Receita",
+          valor: recebido,
+        });
+        if (custo > 0) {
+          await criarTransacao.mutateAsync({
+            data: today(),
+            descricao: `Custo de operação — ${origem}`,
+            tipo: "Despesa",
+            valor: custo,
+          });
+        }
+        await destinarReceita(Math.max(0, recebido - custo), origem, ativoId);
       },
       removeClient: (id) => void removerCliente.mutateAsync(id),
 

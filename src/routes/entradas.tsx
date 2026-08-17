@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Plus, Trash2, ArrowRight, Minus, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ import {
   ENTRY_TYPES,
   ENTRY_VALUES,
   brl,
+  planoDestinacao,
   useCockpit,
   type EntryStatus,
   type EntryType,
@@ -42,7 +43,9 @@ import {
   realizadoLiquido,
   useAtualizarReceita,
   useCriarReceita,
+  useAtivos,
   useCrmReceitas,
+  isReservaBlindada,
   usePassivos,
   useRemoverReceita,
   type CrmReceita,
@@ -89,6 +92,7 @@ function Entradas() {
   const [type, setType] = useState<EntryType>("Ritual 4.5k");
   const [status, setStatus] = useState<EntryStatus>("Interessado");
   const [ritualDate, setRitualDate] = useState("");
+  const [recebendo, setRecebendo] = useState<string | null>(null);
 
   const submit = () => {
     if (!name.trim()) {
@@ -104,8 +108,12 @@ function Entradas() {
 
   const advance = (id: string, current: EntryStatus, clientName: string) => {
     const next = ENTRY_STATUSES[Math.min(2, ENTRY_STATUSES.indexOf(current) + 1)]!;
+    if (next === "Pago") {
+      setRecebendo(id);
+      return;
+    }
     setClientStatus(id, next);
-    if (next === "Pago") toast.success(`${clientName} pago — liquidez atualizada`);
+    toast.success(`${clientName} movido para ${next}`);
   };
 
   return (
@@ -208,6 +216,8 @@ function Entradas() {
           );
         })}
       </div>
+
+      <ReceberRitualSheet id={recebendo} onClose={() => setRecebendo(null)} />
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md">
@@ -713,5 +723,162 @@ function PrazoCell({ ritual, pagamento }: { ritual: string | null; pagamento: st
       <p className="text-muted-foreground">Pgto: {dataBR(pagamento)}</p>
       {label && <p className={`mt-0.5 font-medium ${tone}`}>{label}</p>}
     </div>
+  );
+}
+
+
+/** Confirmação de recebimento: valor, custo editável e prévia da destinação. */
+function ReceberRitualSheet({ id, onClose }: { id: string | null; onClose: () => void }) {
+  const { clients, receberRitual } = useCockpit();
+  const { data: passivos = [] } = usePassivos();
+  const { data: ativos = [] } = useAtivos();
+  const { data: receitas = [] } = useCrmReceitas();
+
+  const cliente = clients.find((c) => c.id === id);
+  const ticket = cliente ? ENTRY_VALUES[cliente.type] : 0;
+  const fontes = ativos.filter((a) => !isReservaBlindada(a));
+
+  const custoSugerido = (() => {
+    const produto = receitas.find((r) => r.ticket_medio === ticket);
+    if (!produto || produto.meta_quantidade <= 0) return 0;
+    return Math.round((produto.custo_operacao ?? 0) / produto.meta_quantidade);
+  })();
+
+  const [recebido, setRecebido] = useState("");
+  const [custo, setCusto] = useState("");
+  const [destino, setDestino] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    if (!cliente) return;
+    setRecebido(String(ticket));
+    setCusto(String(custoSugerido));
+    const preferida =
+      fontes.find((a) => `${a.nome} ${a.tipo ?? ""}`.toLowerCase().includes("investimento")) ??
+      fontes[0];
+    setDestino(preferida ? String(preferida.id) : "caixa");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, ticket, custoSugerido, ativos.length]);
+
+  const nRecebido = Math.max(0, Number(recebido.replace(",", ".")) || 0);
+  const nCusto = Math.max(0, Number(custo.replace(",", ".")) || 0);
+  const liquido = Math.max(0, nRecebido - nCusto);
+  const plano = planoDestinacao(passivos, liquido);
+  const nomeDestino = fontes.find((a) => String(a.id) === destino)?.nome ?? "Poder de Fogo livre";
+
+  const confirmar = async () => {
+    if (!cliente || nRecebido <= 0) {
+      toast.error("Informe o valor recebido");
+      return;
+    }
+    setEnviando(true);
+    try {
+      await receberRitual({
+        id: cliente.id,
+        recebido: nRecebido,
+        custo: nCusto,
+        ativoId: destino === "caixa" ? null : Number(destino),
+      });
+      const resumo = plano.fatias.map((f) => `${brl(f.valor)} → ${f.credor}`).join(" · ");
+      toast.success(
+        `${brl(nRecebido)} recebidos · ${brl(nCusto)} de custo${resumo ? ` · ${resumo}` : ""}${
+          plano.sobra > 0 ? ` · ${brl(plano.sobra)} → ${nomeDestino}` : ""
+        }`,
+      );
+      onClose();
+    } catch {
+      toast.error("Não consegui concluir o recebimento");
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <Sheet open={!!cliente} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Receber {cliente?.name}</SheetTitle>
+          <SheetDescription>
+            {cliente?.type} — confira o valor, ajuste o custo e veja para onde o líquido vai.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="space-y-5 overflow-y-auto px-4 pb-6">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="recebido">Valor recebido (R$)</Label>
+              <Input
+                id="recebido"
+                inputMode="decimal"
+                value={recebido}
+                onChange={(e) => setRecebido(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="custo">Custo da operação (R$)</Label>
+              <Input
+                id="custo"
+                inputMode="decimal"
+                value={custo}
+                onChange={(e) => setCusto(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-liquidity/25 bg-liquidity/5 p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Líquido para a operação
+            </p>
+            <p className="num mt-1 text-2xl font-semibold text-liquidity">{brl(liquido)}</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Onde a sobra é aplicada</Label>
+            <Select value={destino} onValueChange={setDestino}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {fontes.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>
+                    {a.nome} · {brl(a.valor)}
+                  </SelectItem>
+                ))}
+                <SelectItem value="caixa">Deixar no caixa livre</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              O Fundo de Reserva de R$ 40.000 é blindado e não recebe entradas.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border/70 p-4">
+            <p className="text-xs font-semibold">Destinação do líquido</p>
+            <div className="mt-3 space-y-2 text-xs">
+              {plano.fatias.map((f) => (
+                <div key={f.id} className="flex items-center justify-between">
+                  <span className="text-debt">Extermínio {f.credor}</span>
+                  <span className="num">{brl(f.valor)}</span>
+                </div>
+              ))}
+              {plano.fatias.length === 0 && (
+                <p className="text-muted-foreground">
+                  Nenhum alvo da Fase 1 em aberto — 100% vai para {nomeDestino}.
+                </p>
+              )}
+              {plano.sobra > 0 && plano.fatias.length > 0 && (
+                <div className="flex items-center justify-between border-t border-border/60 pt-2">
+                  <span className="text-liquidity">Sobra para {nomeDestino}</span>
+                  <span className="num">{brl(plano.sobra)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Button className="w-full" onClick={() => void confirmar()} disabled={enviando}>
+            {enviando ? "Registrando..." : "Confirmar recebimento"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
