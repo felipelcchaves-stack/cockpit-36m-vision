@@ -20,6 +20,8 @@ import {
   CreditCard,
   Flame,
   Lock,
+  PiggyBank,
+
   Sparkles,
   Target,
   Wallet,
