@@ -22,10 +22,12 @@ import {
   poderDeFogoLiquido,
 } from "@/lib/financeiro";
 
-export type EntryType = "Premium 12k" | "Ritual 4.5k" | "Ritual 2.5k" | "Oye 30k" | "Egungun 5k";
+/** O tipo é o nome do produto do Catálogo de Receitas (texto livre vindo do banco). */
+export type EntryType = string;
 export type EntryStatus = "Interessado" | "Confirmado" | "Pago";
 
-export const ENTRY_VALUES: Record<EntryType, number> = {
+/** Compatibilidade: rótulos fixos antigos, usados só quando a linha não tem valor salvo. */
+export const ENTRY_VALUES: Record<string, number> = {
   "Premium 12k": 12000,
   "Ritual 4.5k": 4500,
   "Ritual 2.5k": 2500,
@@ -33,13 +35,14 @@ export const ENTRY_VALUES: Record<EntryType, number> = {
   "Egungun 5k": 5000,
 };
 
-export const ENTRY_TYPES = Object.keys(ENTRY_VALUES) as EntryType[];
+export const ENTRY_TYPES = Object.keys(ENTRY_VALUES);
 export const ENTRY_STATUSES: EntryStatus[] = ["Interessado", "Confirmado", "Pago"];
 
 export type Client = {
   id: string;
   name: string;
   type: EntryType;
+  valor: number;
   status: EntryStatus;
   note?: string | undefined;
   ritualDate?: string | null;
@@ -141,7 +144,8 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
       (clienteRows ?? []).map((r) => ({
         id: r.id,
         name: r.nome,
-        type: (ENTRY_TYPES.includes(r.tipo as EntryType) ? r.tipo : "Ritual 4.5k") as EntryType,
+        type: r.tipo,
+        valor: r.valor > 0 ? r.valor : (ENTRY_VALUES[r.tipo] ?? 0),
         status: (ENTRY_STATUSES.includes(r.status as EntryStatus)
           ? r.status
           : "Interessado") as EntryStatus,
@@ -182,10 +186,10 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Ctx>(() => {
     const paidRevenue = clients
       .filter((c) => c.status === "Pago")
-      .reduce((s, c) => s + ENTRY_VALUES[c.type], 0);
+      .reduce((s, c) => s + c.valor, 0);
     const pipeline = clients
       .filter((c) => c.status !== "Pago")
-      .reduce((s, c) => s + ENTRY_VALUES[c.type], 0);
+      .reduce((s, c) => s + c.valor, 0);
 
     const manual = transactions.reduce(
       (s, t) => (t.kind === "Receita" ? s + t.amount : s - t.amount),
@@ -249,7 +253,7 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
           nome: c.name,
           tipo: c.type,
           status: c.status,
-          valor: ENTRY_VALUES[c.type],
+          valor: c.valor,
           nota: c.note ?? null,
           data_ritual: c.ritualDate ?? null,
         }),
