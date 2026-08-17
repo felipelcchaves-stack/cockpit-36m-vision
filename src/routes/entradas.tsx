@@ -101,6 +101,8 @@ function Entradas() {
         </div>
       </div>
 
+      <CrmReceitasReais />
+
       <div className="grid gap-4 lg:grid-cols-3">
         {ENTRY_STATUSES.map((col, ci) => {
           const list = clients.filter((c) => c.status === col);
