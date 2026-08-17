@@ -64,7 +64,7 @@ import {
 
 import { Progress } from "@/components/ui/progress";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "Dashboard | Cockpit 36M" },

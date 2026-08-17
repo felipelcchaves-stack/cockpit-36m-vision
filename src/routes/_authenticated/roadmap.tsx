@@ -51,7 +51,7 @@ import {
   viradaDeChave,
 } from "@/lib/financeiro";
 
-export const Route = createFileRoute("/roadmap")({
+export const Route = createFileRoute("/_authenticated/roadmap")({
   head: () => ({
     meta: [
       { title: "Roadmap Dia D | Cockpit 36M" },

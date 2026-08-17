@@ -27,7 +27,7 @@ import {
 } from "@/lib/financeiro";
 
 
-export const Route = createFileRoute("/ofensiva")({
+export const Route = createFileRoute("/_authenticated/ofensiva")({
   head: () => ({
     meta: [
       { title: "Ofensiva → Dia D | Cockpit 36M" },

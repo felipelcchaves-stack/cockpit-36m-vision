@@ -1,9 +1,10 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -15,6 +16,8 @@ import { CockpitProvider } from "@/lib/cockpit-store";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { aplicarTema, temaSalvo, usePerfil } from "@/lib/perfil-queries";
 
 function NotFoundComponent() {
   return (
@@ -117,9 +120,19 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const semShell = pathname.startsWith("/auth");
 
   return (
     <QueryClientProvider client={queryClient}>
+      <TemaSync />
+      <AuthSync />
+      {semShell ? (
+        <>
+          <Outlet />
+          <Toaster position="top-right" />
+        </>
+      ) : (
       <CockpitProvider>
         <SidebarProvider>
           <div className="flex min-h-screen w-full bg-background">
@@ -139,6 +152,39 @@ function RootComponent() {
           <Toaster position="top-right" />
         </SidebarProvider>
       </CockpitProvider>
+      )}
     </QueryClientProvider>
   );
+}
+
+/** Aplica o tema salvo (dark/clean) depois da hidratação e ao trocar de conta. */
+function TemaSync() {
+  const { data: perfil } = usePerfil();
+
+  useEffect(() => {
+    aplicarTema(temaSalvo());
+  }, []);
+
+  useEffect(() => {
+    if (perfil?.tema) aplicarTema(perfil.tema);
+  }, [perfil?.tema]);
+
+  return null;
+}
+
+/** Mantém router e cache alinhados com a sessão. */
+function AuthSync() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      router.invalidate();
+      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+    });
+    return () => data.subscription.unsubscribe();
+  }, [router, queryClient]);
+
+  return null;
 }

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const schema = z.object({
   pergunta: z.string().min(1).max(2000),
@@ -22,6 +23,7 @@ Meta: R$ 36.312.450 aos 66 anos, com aportes de R$ 70.000/mês a 0,9% a.m. e ren
 Responda em no máximo 6 linhas, sempre citando números reais do contexto e terminando com uma ação concreta.`;
 
 export const perguntarCfo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => schema.parse(data))
   .handler(async ({ data }) => {
     const apiKey = process.env["LOVABLE_API_KEY"];

@@ -62,7 +62,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export const Route = createFileRoute("/entradas")({
+export const Route = createFileRoute("/_authenticated/entradas")({
   head: () => ({
     meta: [
       { title: "Entradas e Rituais | Cockpit 36M" },

@@ -12,7 +12,7 @@ import { brl, useCockpit } from "@/lib/cockpit-store";
 import { isCartao, isPago, killList, sumPassivos, usePassivos } from "@/lib/cockpit-queries";
 
 
-export const Route = createFileRoute("/passivos")({
+export const Route = createFileRoute("/_authenticated/passivos")({
   head: () => ({
     meta: [
       { title: "Kill List de Passivos | Cockpit 36M" },
