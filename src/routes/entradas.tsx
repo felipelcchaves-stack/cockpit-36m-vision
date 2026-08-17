@@ -496,6 +496,14 @@ function CrmReceitasReais() {
           Em aberto {brl(fase1.emAberto)} · líquido já capturado {brl(fase1.liquidoJaPago)} ·{" "}
           {fase1.pct.toFixed(1)}% do alvo
         </p>
+        <p className="num mt-1 text-[11px] text-muted-foreground">
+          Com o pipeline do Kanban ({brl(fase1.pipelineLiquido - fase1.liquidoJaPago)} a fechar):{" "}
+          {fase1.pctComPipeline.toFixed(1)}% do alvo · faltaria {brl(fase1.faltaComPipeline)}
+        </p>
+        <Link to="/ofensiva" className="mt-2 inline-block text-[11px] text-gold underline underline-offset-4">
+          Ver cascata completa até o Dia D
+        </Link>
+
         {fase1.falta > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {data
