@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      aportes_mensais: {
+        Row: {
+          competencia: string
+          created_at: string
+          id: string
+          nota: string | null
+          previsto: number
+          realizado: number
+          updated_at: string
+        }
+        Insert: {
+          competencia: string
+          created_at?: string
+          id?: string
+          nota?: string | null
+          previsto?: number
+          realizado?: number
+          updated_at?: string
+        }
+        Update: {
+          competencia?: string
+          created_at?: string
+          id?: string
+          nota?: string | null
+          previsto?: number
+          realizado?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ativos: {
         Row: {
           id: number
@@ -76,6 +106,7 @@ export type Database = {
       }
       crm_receitas: {
         Row: {
+          custo_operacao: number
           data_pagamento_prevista: string | null
           data_ritual: string | null
           id: number
@@ -86,6 +117,7 @@ export type Database = {
           ticket_medio: number
         }
         Insert: {
+          custo_operacao?: number
           data_pagamento_prevista?: string | null
           data_ritual?: string | null
           id?: number
@@ -96,6 +128,7 @@ export type Database = {
           ticket_medio: number
         }
         Update: {
+          custo_operacao?: number
           data_pagamento_prevista?: string | null
           data_ritual?: string | null
           id?: number
@@ -104,6 +137,45 @@ export type Database = {
           quantidade_realizada?: number
           status_campanha?: string | null
           ticket_medio?: number
+        }
+        Relationships: []
+      }
+      parametros_mensais: {
+        Row: {
+          aluguel_potiguara: number
+          created_at: string
+          fatura_cartao: number
+          faturamento_base: number
+          id: string
+          obra_mensal: number
+          obra_meses_restantes: number
+          potiguara_meses_restantes: number
+          receita_livre_mes: number
+          updated_at: string
+        }
+        Insert: {
+          aluguel_potiguara?: number
+          created_at?: string
+          fatura_cartao?: number
+          faturamento_base?: number
+          id?: string
+          obra_mensal?: number
+          obra_meses_restantes?: number
+          potiguara_meses_restantes?: number
+          receita_livre_mes?: number
+          updated_at?: string
+        }
+        Update: {
+          aluguel_potiguara?: number
+          created_at?: string
+          fatura_cartao?: number
+          faturamento_base?: number
+          id?: string
+          obra_mensal?: number
+          obra_meses_restantes?: number
+          potiguara_meses_restantes?: number
+          receita_livre_mes?: number
+          updated_at?: string
         }
         Relationships: []
       }
