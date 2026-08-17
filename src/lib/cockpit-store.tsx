@@ -120,7 +120,7 @@ type Ctx = {
     ativoId: number | null;
   }) => Promise<void>;
   removeClient: (id: string) => void;
-  amortize: (creditorId: string, amount: number) => void;
+  amortize: (creditorId: string, amount: number, date?: string) => void;
   addTx: (t: Omit<Tx, "id">) => void;
 };
 
@@ -283,13 +283,13 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
       },
       removeClient: (id) => void removerCliente.mutateAsync(id),
 
-      amortize: (creditorId, amount) => {
+      amortize: (creditorId, amount, date) => {
         const id = Number(creditorId);
         const target = creditors.find((c) => c.id === creditorId);
         void (async () => {
           await amortizarPassivo.mutateAsync({ id, valor: amount });
           await criarTransacao.mutateAsync({
-            data: today(),
+            data: date ?? today(),
             descricao: `Amortização ${target?.name ?? ""}`.trim(),
             tipo: "Amortização",
             valor: amount,

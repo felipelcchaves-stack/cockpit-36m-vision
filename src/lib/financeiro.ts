@@ -178,6 +178,70 @@ export function placarFase1(passivos: Passivo[], liquidoJaPago: number, pipeline
   };
 }
 
+/* ---------------- Extermínio já realizado (antes do Dia D) ---------------- */
+
+export type AbateRealizado = {
+  id: number;
+  credor: string;
+  original: number;
+  abatido: number;
+  restante: number;
+  extinto: boolean;
+  preDiaD: boolean;
+};
+
+export type LancamentoAbate = {
+  passivo_id: number | null;
+  tipo: string;
+  valor: number;
+  data: string;
+  descricao: string;
+};
+
+/**
+ * Reconstrói, por credor, o saldo original a partir das amortizações já
+ * lançadas no histórico — de qualquer fonte (caixa, CDB, ritual, externo).
+ */
+export function exterminioRealizado(args: {
+  passivos: Passivo[];
+  transacoes: LancamentoAbate[];
+}) {
+  const { passivos, transacoes } = args;
+  const lancamentos = transacoes.filter((t) => t.tipo === "Amortização" && t.passivo_id !== null);
+
+  const abatidoDe = (id: number) =>
+    lancamentos.filter((t) => t.passivo_id === id).reduce((s, t) => s + t.valor, 0);
+
+  const alvos: AbateRealizado[] = passivos.map((p) => {
+    const restante = isPago(p.status) ? 0 : p.saldo_devedor;
+    const abatido = abatidoDe(p.id) + (isPago(p.status) ? p.saldo_devedor : 0);
+    return {
+      id: p.id,
+      credor: p.credor,
+      original: restante + abatido,
+      abatido,
+      restante,
+      extinto: restante === 0,
+      preDiaD: ehAlvoPreDiaD(p.credor),
+    };
+  });
+
+  const original = alvos.reduce((s, a) => s + a.original, 0);
+  const abatido = alvos.reduce((s, a) => s + a.abatido, 0);
+
+  return {
+    alvos,
+    lancamentos: [...lancamentos].sort((a, b) => b.data.localeCompare(a.data)),
+    original,
+    abatido,
+    restante: alvos.reduce((s, a) => s + a.restante, 0),
+    extintos: alvos.filter((a) => a.extinto).length,
+    pct: original > 0 ? Math.min(100, (abatido / original) * 100) : 0,
+    /** Saldos originais por credor, para simular o cenário "sem antecipação". */
+    originais: new Map(alvos.map((a) => [a.id, a.original])),
+  };
+}
+
 /* ---------------- Cascata: Ofensiva da Fase 1 até o Dia D ---------------- */
 
 export type AbatePreDiaD = {
@@ -204,11 +268,14 @@ export function cascataFase1DiaD(args: {
    * nunca é reaplicado sobre o saldo em aberto atual.
    */
   municaoRealizada?: number;
+  /** Saldos originais por credor: habilita o cálculo do ganho por antecipação. */
+  originais?: Map<number, number>;
 }) {
   const { passivos, ativos } = args;
   const pipeline = Math.max(0, args.municao);
   const jaExterminado = Math.max(0, args.municaoRealizada ?? 0);
   const municao = pipeline + jaExterminado;
+
 
   let caixa = pipeline;
   const abates: AbatePreDiaD[] = alvosVivos(passivos)
@@ -242,6 +309,26 @@ export function cascataFase1DiaD(args: {
 
   const sim = simularDiaD(passivosPos, { aporte: aporte + troco, consignado, lastro });
 
+  // Cenário "sem antecipação": mesmos ativos, mas com os saldos originais dos
+  // credores. A diferença de sobra é o ganho de ter matado passivo antes do Dia D.
+  let ganhoAntecipacao = 0;
+  if (args.originais && args.originais.size > 0) {
+    const baseline = passivosPos.map((p) => {
+      const original = args.originais?.get(p.id);
+      if (original === undefined || original <= p.saldo_devedor) return p;
+      return { ...p, saldo_devedor: original, status: "Pendente" };
+    });
+    const consignadoBase = args.originais.get(
+      passivos.find((p) => p.credor.toLowerCase().includes("consignad"))?.id ?? -1,
+    );
+    const simBase = simularDiaD(baseline, {
+      aporte: aporte + troco,
+      consignado: consignadoBase ?? consignado,
+      lastro,
+    });
+    ganhoAntecipacao = sim.sobra - simBase.sobra;
+  }
+
   return {
     municao,
     pipeline,
@@ -253,6 +340,7 @@ export function cascataFase1DiaD(args: {
     lastro,
     consignado,
     sim,
+    ganhoAntecipacao,
     reserva: cofreBlindado(ativos),
     sobraLivre: sim.sobra,
     passivoRestante: sim.passivoRestante,

@@ -2,39 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { CheckCircle2, CreditCard, Flame, Target } from "lucide-react";
-import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { AlvoExterminado } from "@/components/alvo-exterminado";
+import { AmortizarSheet, type AlvoAmortizacao } from "@/components/amortizar-sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { brl, useCockpit } from "@/lib/cockpit-store";
-import {
-  isCartao,
-  isPago,
-  isReservaBlindada,
-  killList,
-  sumPassivos,
-  useAtivos,
-  useDebitarAtivo,
-  usePassivos,
-} from "@/lib/cockpit-queries";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { isCartao, isPago, killList, sumPassivos, usePassivos } from "@/lib/cockpit-queries";
+
 
 export const Route = createFileRoute("/passivos")({
   head: () => ({
@@ -62,16 +38,9 @@ const faseTone = (fase: string | null) => {
 
 function Passivos() {
   const { data: rows = [], isLoading, error } = usePassivos();
-  const { creditors, amortize, addTx } = useCockpit();
-  const { data: ativos = [] } = useAtivos();
-  const debitar = useDebitarAtivo();
+  const { creditors } = useCockpit();
 
-  // Fontes de caixa disponíveis — o Fundo de Reserva é blindado e nunca aparece.
-  const fontes = ativos.filter((a) => !isReservaBlindada(a));
-  const [origem, setOrigem] = useState("externo");
-
-  const [alvo, setAlvo] = useState<{ id: string; nome: string; saldo: number } | null>(null);
-  const [valor, setValor] = useState("");
+  const [alvo, setAlvo] = useState<AlvoAmortizacao | null>(null);
   const [exterminado, setExterminado] = useState<string | null>(null);
   const vivosRef = useRef<string[] | null>(null);
 
@@ -94,58 +63,8 @@ function Passivos() {
     vivosRef.current = vivos;
   }, [lista, isLoading]);
 
-  const abrirAmortizacao = (id: number, credor: string, saldo: number) => {
+  const abrirAmortizacao = (id: number, credor: string, saldo: number) =>
     setAlvo({ id: String(id), nome: credor, saldo });
-    setValor("");
-    const preferida =
-      fontes.find((a) => `${a.nome} ${a.tipo ?? ""}`.toLowerCase().includes("investimento")) ??
-      fontes[0];
-    setOrigem(preferida ? `ativo:${preferida.id}` : "externo");
-  };
-
-  const confirmarAmortizacao = async () => {
-    if (!alvo) return;
-    const v = Number(valor.replace(/\./g, "").replace(",", "."));
-    if (!v || v <= 0) {
-      toast.error("Informe o valor da amortização");
-      return;
-    }
-    const pago = Math.min(v, alvo.saldo);
-    const fonte = origem.startsWith("ativo:")
-      ? fontes.find((a) => a.id === Number(origem.slice(6)))
-      : undefined;
-
-    if (fonte && fonte.valor < pago) {
-      toast.error(`${fonte.nome} tem apenas ${brl(fonte.valor)} disponíveis`);
-      return;
-    }
-
-    amortize(alvo.id, pago);
-    if (fonte) {
-      try {
-        await debitar.mutateAsync({
-          ativo: fonte,
-          valor: pago,
-          motivo: `Amortização ${alvo.nome}`,
-        });
-        // Contrapartida do resgate: o saldo sai do ativo e entra no caixa que pagou a dívida.
-        addTx({
-          date: new Date().toISOString().slice(0, 10),
-          description: `Resgate ${fonte.nome} — Amortização ${alvo.nome}`,
-          kind: "Receita",
-          amount: pago,
-        });
-      } catch {
-        toast.error("Passivo abatido, mas não consegui debitar a origem do dinheiro");
-      }
-    }
-    toast.success(
-      fonte
-        ? `${brl(pago)} saíram de ${fonte.nome} para abater ${alvo.nome}`
-        : `Amortização de ${brl(pago)} registrada em ${alvo.nome}`,
-    );
-    setAlvo(null);
-  };
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -253,64 +172,7 @@ function Passivos() {
         })}
       </div>
 
-      <Sheet open={alvo !== null} onOpenChange={(o) => !o && setAlvo(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Amortizar {alvo?.nome}</SheetTitle>
-            <SheetDescription>
-              Saldo devedor atual: {alvo ? brl(alvo.saldo) : "—"}. A amortização entra no histórico.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="space-y-5 px-4">
-            <div className="space-y-2">
-              <Label htmlFor="amort">Valor da amortização (R$)</Label>
-              <Input
-                id="amort"
-                inputMode="decimal"
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
-                placeholder="30000"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>De onde saiu o dinheiro</Label>
-              <Select value={origem} onValueChange={setOrigem}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {fontes.map((a) => (
-                    <SelectItem key={a.id} value={`ativo:${a.id}`}>
-                      {a.nome} · {brl(a.valor)}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="externo">Outro / dinheiro externo</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground">
-                {origem === "externo"
-                  ? "Nenhum caixa do cockpit será debitado."
-                  : "O saldo dessa conta cai no mesmo valor e o saque entra no extrato do lastro."}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                O Fundo de Reserva de R$ 40.000 é blindado e não entra nesta lista.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={() => setValor(String(alvo?.saldo ?? 0))}
-              >
-                Extermínio total
-              </Button>
-              <Button className="flex-1" onClick={() => void confirmarAmortizacao()} disabled={debitar.isPending}>
-                Registrar
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
+      <AmortizarSheet alvo={alvo} onClose={() => setAlvo(null)} />
     </div>
   );
 }

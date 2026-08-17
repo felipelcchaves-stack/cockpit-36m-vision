@@ -4,12 +4,16 @@ import { motion } from "motion/react";
 import { Crosshair, Flame, Lock, Rocket, Sparkles, Target } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
+import { AmortizarSheet, type AlvoAmortizacao } from "@/components/amortizar-sheet";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { brl, useCockpit } from "@/lib/cockpit-store";
 import {
+  killList,
   useAtivos,
   useCrmReceitas,
   usePassivos,
+  useTransacoes,
   type CrmReceita,
 } from "@/lib/cockpit-queries";
 
@@ -19,7 +23,9 @@ import {
   RETIRADA_SEGURA,
   brlExato,
   cascataFase1DiaD,
+  exterminioRealizado,
 } from "@/lib/financeiro";
+
 
 export const Route = createFileRoute("/ofensiva")({
   head: () => ({
@@ -59,8 +65,10 @@ function Ofensiva() {
   const { data: passivos = [] } = usePassivos();
   const { data: ativos = [] } = useAtivos();
   const { data: receitas = [] } = useCrmReceitas();
+  const { data: transacoes = [] } = useTransacoes();
 
   const [cenario, setCenario] = useState<Cenario>("provavel");
+  const [alvoAmortizar, setAlvoAmortizar] = useState<AlvoAmortizacao | null>(null);
 
   const liquidoCliente = (valor: number, tipo: string) => {
     const produto = receitas.find((r) => r.produto === tipo);
@@ -80,15 +88,35 @@ function Ofensiva() {
   const pipeline =
     cenario === "realizado" ? 0 : cenario === "provavel" ? confirmados : confirmados + interessados;
 
+  // Tudo que já morreu antes do Dia D — de rituais, do caixa, do CDB ou de fora.
+  const ex = useMemo(
+    () => exterminioRealizado({ passivos, transacoes }),
+    [passivos, transacoes],
+  );
+
   const c = useMemo(
-    () => cascataFase1DiaD({ passivos, ativos, municao: pipeline, municaoRealizada: pagos }),
-    [passivos, ativos, pipeline, pagos],
+    () =>
+      cascataFase1DiaD({
+        passivos,
+        ativos,
+        municao: pipeline,
+        municaoRealizada: pagos,
+        originais: ex.originais,
+      }),
+    [passivos, ativos, pipeline, pagos, ex.originais],
   );
 
   const alvoTotal = c.abates.reduce((s, a) => s + a.saldo, 0) + c.jaExterminado;
   const pctFase1 = alvoTotal > 0 ? Math.min(100, ((alvoTotal - c.faltaVender) / alvoTotal) * 100) : 100;
   const rendaSobra = c.sobraLivre * RETIRADA_SEGURA;
   const pctMeta = Math.max(0, (c.sobraLivre / META_PATRIMONIO) * 100);
+
+  // Kill List na ordem oficial, com o estado real de cada alvo.
+  const killListViva = killList(passivos).map((p) => ({
+    passivo: p,
+    abate: ex.alvos.find((a) => a.id === p.id),
+  }));
+
 
   const sugestoes = receitas
     .filter((r) => r.ticket_medio > 0)
@@ -153,43 +181,172 @@ function Ofensiva() {
           value={pctFase1}
           className={`mt-4 h-2 bg-secondary ${c.faltaVender === 0 ? "[&>div]:bg-liquidity" : ""}`}
         />
+        <div className="mt-4 grid gap-3 border-t border-border/50 pt-4 sm:grid-cols-2">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Passivo já exterminado
+            </p>
+            <p className="num mt-1 text-lg font-semibold text-liquidity">
+              {brlExato(ex.abatido)}{" "}
+              <span className="text-xs font-normal text-muted-foreground">
+                de {brl(ex.original)} · {ex.pct.toFixed(1)}%
+              </span>
+            </p>
+          </div>
+          <div className="sm:text-right">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Ganho por antecipação na Sobra Livre
+            </p>
+            <p
+              className={`num mt-1 text-lg font-semibold ${
+                c.ganhoAntecipacao > 0 ? "gold-text" : "text-muted-foreground"
+              }`}
+            >
+              {c.ganhoAntecipacao > 0 ? `+ ${brlExato(c.ganhoAntecipacao)}` : "—"}
+            </p>
+          </div>
+        </div>
       </motion.div>
 
-      {/* Já capturado: rituais efetivamente pagos */}
+      {/* Kill List ao vivo: estado real de cada credor, com lançamento manual */}
       <div className="glass-card rounded-2xl p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold">Já capturado (rituais pagos)</h2>
+            <h2 className="text-base font-semibold">Kill List ao vivo</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Dinheiro que já entrou e já baixou o saldo de Agiota/Oluwo — por isso não aparece mais
-              como abatimento a fazer.
+              Saldo original × o que já morreu × o que resta hoje. Toda amortização lançada aqui
+              recalcula a cascata do Dia D na hora.
             </p>
           </div>
-          <p className="num text-2xl font-semibold text-liquidity">{brlExato(pagos)}</p>
-        </div>
-        {clientesPagos.length > 0 ? (
-          <ul className="mt-4 divide-y divide-border/60">
-            {clientesPagos.map((cl) => (
-              <li key={cl.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                <span className="min-w-0">
-                  <span className="block truncate">{cl.name}</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">
-                    {cl.type}
-                    {cl.paymentDate ? ` · pago em ${cl.paymentDate.split("-").reverse().join("/")}` : ""}
-                  </span>
-                </span>
-                <span className="num shrink-0 text-liquidity">
-                  {brlExato(liquidoCliente(cl.valor, cl.type))}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Nenhum ritual marcado como Pago ainda.
+          <p className="num text-sm text-muted-foreground">
+            {ex.extintos}/{ex.alvos.length} alvos extintos
           </p>
-        )}
+        </div>
+        <div className="mt-5 space-y-4">
+          {killListViva.map(({ passivo: p, abate }) => {
+            const original = abate?.original ?? p.saldo_devedor;
+            const abatido = abate?.abatido ?? 0;
+            const restante = abate?.restante ?? p.saldo_devedor;
+            const extinto = restante === 0;
+            return (
+              <div key={p.id} className="rounded-xl border border-border/60 bg-secondary/30 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className={`truncate text-sm ${extinto ? "text-liquidity" : ""}`}>
+                      {p.credor}
+                      {extinto && (
+                        <span className="ml-2 rounded-full border border-liquidity/40 bg-liquidity/10 px-2 py-0.5 text-[10px] uppercase tracking-wider">
+                          alvo exterminado
+                        </span>
+                      )}
+                      {abate?.preDiaD && !extinto && (
+                        <span className="ml-2 rounded-full border border-debt/40 bg-debt/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-debt">
+                          pré-Dia D
+                        </span>
+                      )}
+                    </p>
+                    <p className="num mt-1 text-[11px] text-muted-foreground">
+                      abatido {brl(abatido)} de {brl(original)} · em aberto {brl(restante)}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={extinto ? "secondary" : "default"}
+                    disabled={extinto}
+                    onClick={() =>
+                      setAlvoAmortizar({ id: String(p.id), nome: p.credor, saldo: restante })
+                    }
+                  >
+                    {extinto ? "Extinto" : "Amortizar"}
+                  </Button>
+                </div>
+                <Progress
+                  value={original > 0 ? (abatido / original) * 100 : 100}
+                  className={`mt-3 h-2 bg-secondary ${extinto ? "[&>div]:bg-liquidity" : ""}`}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Extermínio já realizado: rituais pagos + amortizações lançadas */}
+      <div className="glass-card rounded-2xl p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Extermínio já realizado</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Rituais pagos e amortizações de qualquer fonte (caixa, CDB, dinheiro externo) — tudo
+              que já baixou saldo antes do Dia D.
+            </p>
+          </div>
+          <p className="num text-2xl font-semibold text-liquidity">{brlExato(ex.abatido)}</p>
+        </div>
+
+        <div className="mt-4 grid gap-5 lg:grid-cols-2">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Rituais pagos · {brl(pagos)} líquidos
+            </p>
+            {clientesPagos.length > 0 ? (
+              <ul className="mt-2 divide-y divide-border/60">
+                {clientesPagos.map((cl) => (
+                  <li key={cl.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="block truncate">{cl.name}</span>
+                      <span className="block truncate text-[11px] text-muted-foreground">
+                        {cl.type}
+                        {cl.paymentDate
+                          ? ` · pago em ${cl.paymentDate.split("-").reverse().join("/")}`
+                          : ""}
+                      </span>
+                    </span>
+                    <span className="num shrink-0 text-liquidity">
+                      {brlExato(liquidoCliente(cl.valor, cl.type))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Nenhum ritual marcado como Pago ainda.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Amortizações lançadas
+            </p>
+            {ex.lancamentos.length > 0 ? (
+              <ul className="mt-2 divide-y divide-border/60">
+                {ex.lancamentos.slice(0, 8).map((t, i) => (
+                  <li
+                    key={`${t.passivo_id}-${t.data}-${i}`}
+                    className="flex items-center justify-between gap-3 py-2 text-sm"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate">{t.descricao}</span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        {t.data.split("-").reverse().join("/")}
+                      </span>
+                    </span>
+                    <span className="num shrink-0 text-debt">− {brlExato(t.valor)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Nenhuma amortização lançada ainda — use o botão Amortizar na Kill List acima.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <AmortizarSheet alvo={alvoAmortizar} onClose={() => setAlvoAmortizar(null)} />
+
+
 
 
 
