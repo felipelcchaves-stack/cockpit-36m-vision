@@ -97,7 +97,10 @@ function Passivos() {
   const abrirAmortizacao = (id: number, credor: string, saldo: number) => {
     setAlvo({ id: String(id), nome: credor, saldo });
     setValor("");
-    setOrigem(fontes[0] ? `ativo:${fontes[0].id}` : "externo");
+    const preferida =
+      fontes.find((a) => `${a.nome} ${a.tipo ?? ""}`.toLowerCase().includes("investimento")) ??
+      fontes[0];
+    setOrigem(preferida ? `ativo:${preferida.id}` : "externo");
   };
 
   const confirmarAmortizacao = async () => {
