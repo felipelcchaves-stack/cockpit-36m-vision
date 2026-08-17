@@ -24,6 +24,8 @@ export type CrmReceita = {
   meta_quantidade: number;
   quantidade_realizada: number;
   status_campanha: string | null;
+  data_ritual: string | null;
+  data_pagamento_prevista: string | null;
 };
 
 export type CrmReceitaInput = {
@@ -32,7 +34,10 @@ export type CrmReceitaInput = {
   meta_quantidade: number;
   quantidade_realizada: number;
   status_campanha: string | null;
+  data_ritual: string | null;
+  data_pagamento_prevista: string | null;
 };
+
 
 const num = (v: unknown) => Number(v ?? 0);
 
