@@ -48,8 +48,8 @@ export const passivosQuery = queryOptions({
   queryFn: async (): Promise<Passivo[]> => {
     const { data, error } = await supabase
       .from("passivos")
-      .select("id, credor, saldo_devedor, fase_quitacao, status, ordem_extermínio")
-      .order("ordem_extermínio", { ascending: true });
+      .select("id, credor, saldo_devedor, fase_quitacao, status, ordem_exterminio")
+      .order("ordem_exterminio", { ascending: true });
     if (error) throw error;
     return (data ?? []).map((r) => ({
       id: r.id,
@@ -57,7 +57,7 @@ export const passivosQuery = queryOptions({
       saldo_devedor: num(r.saldo_devedor),
       fase_quitacao: r.fase_quitacao,
       status: r.status,
-      ordem: num(r.ordem_extermínio) || 99,
+      ordem: num(r.ordem_exterminio) || 99,
     }));
   },
 });
