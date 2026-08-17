@@ -162,7 +162,7 @@ function Ofensiva() {
             n: "1",
             label: "Munição da Fase 1",
             value: brlExato(c.municao),
-            hint: `Já capturado no catálogo: ${brl(jaCapturado)} · confirmados ${brl(confirmados)} · interessados ${brl(interessados)}`,
+            hint: `Já pago ${brl(pagos)} · confirmados ${brl(confirmados)} · interessados ${brl(interessados)}`,
             icon: Crosshair,
             tone: "text-liquidity",
           },
