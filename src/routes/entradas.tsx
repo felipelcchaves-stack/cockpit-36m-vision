@@ -338,24 +338,29 @@ function CrmReceitasReais() {
   const [deleteTarget, setDeleteTarget] = useState<CrmReceita | null>(null);
 
   const totalPotencial = data.reduce((s, r) => s + potencialLiquido(r), 0);
-  const totalRealizado = data.reduce((s, r) => s + realizadoLiquido(r), 0);
   const totalBruto = data.reduce((s, r) => s + potencial(r), 0);
   const totalCusto = data.reduce((s, r) => s + (r.custo_operacao ?? 0), 0);
+
+  const custoUnitDe = (tipo: string) => {
+    const produto = data.find((r) => r.produto === tipo);
+    return produto && produto.meta_quantidade > 0
+      ? (produto.custo_operacao ?? 0) / produto.meta_quantidade
+      : 0;
+  };
+
+  // Realizado = clientes efetivamente pagos no Kanban, líquidos de custo.
+  const totalRealizado = clients
+    .filter((c) => c.status === "Pago")
+    .reduce((s, c) => s + Math.max(0, c.valor - custoUnitDe(c.type)), 0);
   const pctGeral = totalPotencial > 0 ? Math.min(100, (totalRealizado / totalPotencial) * 100) : 0;
 
   // Pipeline do Kanban líquido: clientes ainda não pagos, menos o custo unitário do produto.
   const pipelineLiquido = clients
     .filter((c) => c.status !== "Pago")
-    .reduce((s, c) => {
-      const produto = data.find((r) => r.produto === c.type);
-      const custoUnit =
-        produto && produto.meta_quantidade > 0
-          ? (produto.custo_operacao ?? 0) / produto.meta_quantidade
-          : 0;
-      return s + Math.max(0, c.valor - custoUnit);
-    }, 0);
+    .reduce((s, c) => s + Math.max(0, c.valor - custoUnitDe(c.type)), 0);
 
   const fase1 = placarFase1(passivos, totalRealizado, totalRealizado + pipelineLiquido);
+
 
 
   const openNew = () => {
