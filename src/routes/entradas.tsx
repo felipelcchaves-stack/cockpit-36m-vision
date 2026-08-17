@@ -38,7 +38,7 @@ import {
   potencialLiquido,
   progresso,
   realizado,
-  realizadoLiquido,
+  
   useAtualizarReceita,
   useCriarReceita,
   useAtivos,
