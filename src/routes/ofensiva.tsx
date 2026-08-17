@@ -67,23 +67,25 @@ function Ofensiva() {
     return Math.max(0, valor - custoUnitario(produto));
   };
 
+  const clientesPagos = clients.filter((c) => c.status === "Pago");
+  const pagos = clientesPagos.reduce((s, c) => s + liquidoCliente(c.valor, c.type), 0);
   const confirmados = clients
     .filter((c) => c.status === "Confirmado")
     .reduce((s, c) => s + liquidoCliente(c.valor, c.type), 0);
   const interessados = clients
     .filter((c) => c.status === "Interessado")
     .reduce((s, c) => s + liquidoCliente(c.valor, c.type), 0);
-  const jaCapturado = receitas.reduce((s, r) => s + realizadoLiquido(r), 0);
 
-  const municao =
+  // Cenários cumulativos: o realizado sempre conta; o pipeline entra por cima.
+  const pipeline =
     cenario === "realizado" ? 0 : cenario === "provavel" ? confirmados : confirmados + interessados;
 
   const c = useMemo(
-    () => cascataFase1DiaD({ passivos, ativos, municao }),
-    [passivos, ativos, municao],
+    () => cascataFase1DiaD({ passivos, ativos, municao: pipeline, municaoRealizada: pagos }),
+    [passivos, ativos, pipeline, pagos],
   );
 
-  const alvoTotal = c.abates.reduce((s, a) => s + a.saldo, 0);
+  const alvoTotal = c.abates.reduce((s, a) => s + a.saldo, 0) + c.jaExterminado;
   const pctFase1 = alvoTotal > 0 ? Math.min(100, ((alvoTotal - c.faltaVender) / alvoTotal) * 100) : 100;
   const rendaSobra = c.sobraLivre * RETIRADA_SEGURA;
   const pctMeta = Math.max(0, (c.sobraLivre / META_PATRIMONIO) * 100);
@@ -94,6 +96,7 @@ function Ofensiva() {
       produto: r.produto,
       qtd: Math.ceil(c.faltaVender / Math.max(1, r.ticket_medio - custoUnitario(r))),
     }));
+
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
