@@ -154,10 +154,27 @@ type Ctx = {
 const CockpitContext = createContext<Ctx | null>(null);
 
 export function CockpitProvider({ children }: { children: ReactNode }) {
-  const [clients, setClients] = useState(initialClients);
+  const { data: clienteRows } = useClientes();
+  const criarCliente = useCriarCliente();
+  const atualizarStatusCliente = useAtualizarStatusCliente();
+  const removerCliente = useRemoverCliente();
   const [creditors, setCreditors] = useState(initialCreditors);
   const [transactions, setTransactions] = useState(initialTx);
   const [phases, setPhases] = useState(initialPhases);
+
+  const clients = useMemo<Client[]>(
+    () =>
+      (clienteRows ?? []).map((r) => ({
+        id: r.id,
+        name: r.nome,
+        type: (ENTRY_TYPES.includes(r.tipo as EntryType) ? r.tipo : "Ritual 4.5k") as EntryType,
+        status: (ENTRY_STATUSES.includes(r.status as EntryStatus)
+          ? r.status
+          : "Interessado") as EntryStatus,
+        note: r.nota ?? undefined,
+      })),
+    [clienteRows],
+  );
 
   const value = useMemo<Ctx>(() => {
     const paidRevenue = clients
@@ -186,10 +203,17 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
       pipeline,
       freeSurplus,
       progress,
-      addClient: (c) => setClients((prev) => [{ ...c, id: uid() }, ...prev]),
-      setClientStatus: (id, status) =>
-        setClients((prev) => prev.map((c) => (c.id === id ? { ...c, status } : c))),
-      removeClient: (id) => setClients((prev) => prev.filter((c) => c.id !== id)),
+      addClient: (c) =>
+        criarCliente.mutateAsync({
+          nome: c.name,
+          tipo: c.type,
+          status: c.status,
+          valor: ENTRY_VALUES[c.type],
+          nota: c.note ?? null,
+        }),
+      setClientStatus: (id, status) => atualizarStatusCliente.mutateAsync({ id, status }),
+      removeClient: (id) => removerCliente.mutateAsync(id),
+
       amortize: (creditorId, amount) => {
         setCreditors((prev) =>
           prev.map((c) =>
