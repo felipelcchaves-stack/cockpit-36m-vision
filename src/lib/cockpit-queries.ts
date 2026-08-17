@@ -717,6 +717,14 @@ export function useAjustarSaldoAtivo() {
       const delta = saldoReal - ativo.valor;
       const juro = Math.abs(rendimentoEstimado) > Math.abs(delta) ? delta : rendimentoEstimado;
       const movimento = delta - juro;
+      const { data: jaFechado } = await supabase
+        .from("rendimentos")
+        .select("id")
+        .eq("ativo_id", ativo.id)
+        .eq("data", hoje)
+        .eq("origem", "automatico")
+        .maybeSingle();
+
       const linhas: Array<{
         ativo_id: number;
         data: string;
@@ -726,7 +734,7 @@ export function useAjustarSaldoAtivo() {
         origem: string;
       }> = [];
       let saldo = ativo.valor;
-      if (juro !== 0) {
+      if (juro !== 0 && !jaFechado) {
         linhas.push({
           ativo_id: ativo.id,
           data: hoje,
@@ -737,13 +745,14 @@ export function useAjustarSaldoAtivo() {
         });
         saldo += juro;
       }
-      if (movimento !== 0) {
+      const resto = jaFechado ? delta : movimento;
+      if (resto !== 0) {
         linhas.push({
           ativo_id: ativo.id,
           data: hoje,
           saldo_anterior: saldo,
-          juros: movimento,
-          saldo_final: saldo + movimento,
+          juros: resto,
+          saldo_final: saldo + resto,
           origem: "ajuste",
         });
       }
@@ -756,7 +765,7 @@ export function useAjustarSaldoAtivo() {
         .update({ valor: saldoReal, ultimo_fechamento: hoje })
         .eq("id", ativo.id);
       if (error) throw error;
-      return { juro, movimento };
+      return { juro: jaFechado ? 0 : juro, movimento: resto };
     },
     onSuccess: () => invalidateLastro(qc),
   });
