@@ -112,6 +112,7 @@ export type Database = {
           credor: string
           fase_quitacao: string | null
           id: number
+          ordem_exterminio: number | null
           saldo_devedor: number
           status: string | null
         }
@@ -119,6 +120,7 @@ export type Database = {
           credor: string
           fase_quitacao?: string | null
           id?: number
+          ordem_exterminio?: number | null
           saldo_devedor: number
           status?: string | null
         }
@@ -126,6 +128,7 @@ export type Database = {
           credor?: string
           fase_quitacao?: string | null
           id?: number
+          ordem_exterminio?: number | null
           saldo_devedor?: number
           status?: string | null
         }
@@ -201,6 +204,47 @@ export type Database = {
             columns: ["fase_id"]
             isOneToOne: false
             referencedRelation: "roadmap_fases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transacoes: {
+        Row: {
+          created_at: string
+          data: string
+          descricao: string
+          id: string
+          passivo_id: number | null
+          tipo: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          data?: string
+          descricao: string
+          id?: string
+          passivo_id?: number | null
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          descricao?: string
+          id?: string
+          passivo_id?: number | null
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transacoes_passivo_id_fkey"
+            columns: ["passivo_id"]
+            isOneToOne: false
+            referencedRelation: "passivos"
             referencedColumns: ["id"]
           },
         ]

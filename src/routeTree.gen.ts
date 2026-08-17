@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ComandoRouteImport } from './routes/comando'
+import { Route as DiaDRouteImport } from './routes/dia-d'
 import { Route as EntradasRouteImport } from './routes/entradas'
 import { Route as HistoricoRouteImport } from './routes/historico'
 import { Route as PassivosRouteImport } from './routes/passivos'
@@ -24,6 +25,11 @@ const IndexRoute = IndexRouteImport.update({
 const ComandoRoute = ComandoRouteImport.update({
   id: '/comando',
   path: '/comando',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiaDRoute = DiaDRouteImport.update({
+  id: '/dia-d',
+  path: '/dia-d',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EntradasRoute = EntradasRouteImport.update({
@@ -50,6 +56,7 @@ const RoadmapRoute = RoadmapRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/comando': typeof ComandoRoute
+  '/dia-d': typeof DiaDRoute
   '/entradas': typeof EntradasRoute
   '/historico': typeof HistoricoRoute
   '/passivos': typeof PassivosRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/comando': typeof ComandoRoute
+  '/dia-d': typeof DiaDRoute
   '/entradas': typeof EntradasRoute
   '/historico': typeof HistoricoRoute
   '/passivos': typeof PassivosRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/comando': typeof ComandoRoute
+  '/dia-d': typeof DiaDRoute
   '/entradas': typeof EntradasRoute
   '/historico': typeof HistoricoRoute
   '/passivos': typeof PassivosRoute
@@ -75,13 +84,27 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/comando' | '/entradas' | '/historico' | '/passivos' | '/roadmap'
+    | '/'
+    | '/comando'
+    | '/dia-d'
+    | '/entradas'
+    | '/historico'
+    | '/passivos'
+    | '/roadmap'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/comando' | '/entradas' | '/historico' | '/passivos' | '/roadmap'
+  to:
+    | '/'
+    | '/comando'
+    | '/dia-d'
+    | '/entradas'
+    | '/historico'
+    | '/passivos'
+    | '/roadmap'
   id:
     | '__root__'
     | '/'
     | '/comando'
+    | '/dia-d'
     | '/entradas'
     | '/historico'
     | '/passivos'
@@ -91,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ComandoRoute: typeof ComandoRoute
+  DiaDRoute: typeof DiaDRoute
   EntradasRoute: typeof EntradasRoute
   HistoricoRoute: typeof HistoricoRoute
   PassivosRoute: typeof PassivosRoute
@@ -111,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/comando'
       fullPath: '/comando'
       preLoaderRoute: typeof ComandoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dia-d': {
+      id: '/dia-d'
+      path: '/dia-d'
+      fullPath: '/dia-d'
+      preLoaderRoute: typeof DiaDRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/entradas': {
@@ -147,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ComandoRoute: ComandoRoute,
+  DiaDRoute: DiaDRoute,
   EntradasRoute: EntradasRoute,
   HistoricoRoute: HistoricoRoute,
   PassivosRoute: PassivosRoute,

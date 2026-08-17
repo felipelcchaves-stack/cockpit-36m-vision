@@ -1,0 +1,1 @@
+ALTER TABLE public.passivos RENAME COLUMN "ordem_extermínio" TO ordem_exterminio;

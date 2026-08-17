@@ -8,6 +8,8 @@ export type Passivo = {
   saldo_devedor: number;
   fase_quitacao: string | null;
   status: string | null;
+  /** Ordem oficial de extermínio do dossiê (Kill List). */
+  ordem: number;
 };
 
 export type Ativo = {
@@ -46,10 +48,17 @@ export const passivosQuery = queryOptions({
   queryFn: async (): Promise<Passivo[]> => {
     const { data, error } = await supabase
       .from("passivos")
-      .select("id, credor, saldo_devedor, fase_quitacao, status")
-      .order("saldo_devedor", { ascending: false });
+      .select("id, credor, saldo_devedor, fase_quitacao, status, ordem_exterminio")
+      .order("ordem_exterminio", { ascending: true });
     if (error) throw error;
-    return (data ?? []).map((r) => ({ ...r, saldo_devedor: num(r.saldo_devedor) }));
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      credor: r.credor,
+      saldo_devedor: num(r.saldo_devedor),
+      fase_quitacao: r.fase_quitacao,
+      status: r.status,
+      ordem: num(r.ordem_exterminio) || 99,
+    }));
   },
 });
 
@@ -102,6 +111,22 @@ export const isPoderDeFogo = (a: Ativo) => {
 
 export const sumPoderDeFogo = (rows: Ativo[] = []) =>
   rows.filter(isPoderDeFogo).reduce((s, a) => s + a.valor, 0);
+
+/** Lei do Fundo de Reserva: caixa blindado, fora de qualquer cálculo de quitação. */
+export const isReservaBlindada = (a: Ativo) =>
+  `${a.nome} ${a.tipo ?? ""}`.toLowerCase().includes("reserva");
+
+export const sumReservaBlindada = (rows: Ativo[] = []) =>
+  rows.filter(isReservaBlindada).reduce((s, a) => s + a.valor, 0);
+
+/** Alvos ainda vivos, na ordem oficial de extermínio. */
+export const killList = (rows: Passivo[] = []) =>
+  [...rows].sort((a, b) => a.ordem - b.ordem || b.saldo_devedor - a.saldo_devedor);
+
+export const alvosVivos = (rows: Passivo[] = []) =>
+  killList(rows).filter((r) => !isPago(r.status) && r.saldo_devedor > 0);
+
+export const isCartao = (p: Passivo) => p.credor.toLowerCase().includes("cart");
 
 export const potencial = (r: CrmReceita) => r.ticket_medio * r.meta_quantidade;
 
@@ -162,6 +187,95 @@ export function useMarcarPassivoPago() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["passivos"] });
+    },
+  });
+}
+
+/** Amortização real: abate valor do saldo devedor e quita quando zera. */
+export function useAmortizarPassivo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, valor }: { id: number; valor: number }) => {
+      const { data, error: readErr } = await supabase
+        .from("passivos")
+        .select("saldo_devedor, status")
+        .eq("id", id)
+        .single();
+      if (readErr) throw readErr;
+      const novo = Math.max(0, num(data?.saldo_devedor) - valor);
+      const { error } = await supabase
+        .from("passivos")
+        .update({ saldo_devedor: novo, status: novo === 0 ? "Pago" : (data?.status ?? "Pendente") })
+        .eq("id", id);
+      if (error) throw error;
+      return { novo };
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["passivos"] });
+    },
+  });
+}
+
+/* ---------------- Transações (transacoes) ---------------- */
+
+export type TipoTransacao = "Receita" | "Despesa" | "Amortização";
+
+export type Transacao = {
+  id: string;
+  data: string;
+  descricao: string;
+  tipo: TipoTransacao;
+  valor: number;
+  passivo_id: number | null;
+};
+
+export const transacoesQuery = queryOptions({
+  queryKey: ["transacoes"],
+  queryFn: async (): Promise<Transacao[]> => {
+    const { data, error } = await supabase
+      .from("transacoes")
+      .select("id, data, descricao, tipo, valor, passivo_id")
+      .order("data", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((r) => ({
+      ...r,
+      valor: num(r.valor),
+      tipo: (r.tipo ?? "Receita") as TipoTransacao,
+    }));
+  },
+});
+
+export const useTransacoes = () => useQuery(transacoesQuery);
+
+export function useCriarTransacao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      data?: string;
+      descricao: string;
+      tipo: TipoTransacao;
+      valor: number;
+      passivo_id?: number | null;
+    }) => {
+      const { error } = await supabase.from("transacoes").insert(input);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["transacoes"] });
+    },
+  });
+}
+
+export function useRemoverTransacao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("transacoes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["transacoes"] });
     },
   });
 }

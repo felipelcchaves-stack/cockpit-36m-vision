@@ -9,7 +9,16 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowDownRight, ArrowUpRight, Flame, Sparkles, Target, Wallet } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  CreditCard,
+  Flame,
+  Lock,
+  Sparkles,
+  Target,
+  Wallet,
+} from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { ENTRY_VALUES, brl, useCockpit } from "@/lib/cockpit-store";
@@ -26,6 +35,15 @@ import {
   useCrmReceitas,
   usePassivos,
 } from "@/lib/cockpit-queries";
+import {
+  FATURA_CARTAO,
+  META_PATRIMONIO,
+  alertaCartao,
+  cofreBlindado,
+  cruzamentoMeta,
+  projetar36M,
+} from "@/lib/financeiro";
+
 import { Progress } from "@/components/ui/progress";
 
 export const Route = createFileRoute("/")({
@@ -58,12 +76,11 @@ function Dashboard() {
   const freeSurplus = liquidity - totalDebt;
   const passivosQuitados = passivosRows.filter((p) => isPago(p.status)).length;
 
-  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago"];
-  const chartData = months.map((m, i) => ({
-    mes: m,
-    liquidez: Math.round(liquidity * (0.42 + i * 0.083)),
-    passivos: Math.round(totalDebt * (1.35 - i * 0.05)),
-  }));
+  const reserva = cofreBlindado(ativosRows);
+  const projecao = projetar36M(Math.max(0, freeSurplus));
+  const cruzamento = cruzamentoMeta(projecao);
+  const cartao = alertaCartao(FATURA_CARTAO, Math.max(0, freeSurplus));
+
 
   const paidCreditors = creditors.filter((c) => c.balance === 0).length;
   const nextTarget = [...creditors].filter((c) => c.balance > 0).sort((a, b) => a.balance - b.balance)[0];
@@ -189,6 +206,48 @@ function Dashboard() {
         ))}
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="rounded-2xl border border-gold/25 bg-gold/[0.06] p-5"
+        >
+          <div className="flex items-center gap-2 text-gold">
+            <Lock className="size-4" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider">
+              Cofre — Fundo de Reserva
+            </h2>
+          </div>
+          <p className="num mt-3 text-2xl font-semibold gold-text">{brl(reserva)}</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Blindado e intocável. Não entra na Bazuca, não amortiza passivo, não paga Leka.
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.24 }}
+          className={`rounded-2xl border p-5 ${
+            cartao.excede ? "border-debt/40 bg-debt/[0.08]" : "border-border bg-card/40"
+          }`}
+        >
+          <div className={`flex items-center gap-2 ${cartao.excede ? "text-debt" : "text-liquidity"}`}>
+            <CreditCard className="size-4" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider">Lei do Cartão</h2>
+          </div>
+          <p className="num mt-3 text-2xl font-semibold">{brl(cartao.faturaProjetada)}</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {cartao.excede
+              ? `Fatura projetada supera a receita livre em ${brl(cartao.gap)}. Corte gasto agora — zero rotativo, zero parcelamento.`
+              : "Fatura dentro da receita livre do mês. Pagamento integral antes do vencimento."}
+          </p>
+        </motion.div>
+      </div>
+
+
+
       <div className="grid gap-4 lg:grid-cols-3">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -196,46 +255,45 @@ function Dashboard() {
           transition={{ delay: 0.25, duration: 0.45 }}
           className="glass-card rounded-2xl p-5 lg:col-span-2"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold">Queima de dívida x Liquidez</h2>
-              <p className="text-xs text-muted-foreground">Projeção dos últimos 8 ciclos</p>
+              <h2 className="text-base font-semibold">Rota até os 36M</h2>
+              <p className="text-xs text-muted-foreground">
+                Sobra livre reinvestida + aportes de R$ 70.000/mês a 0,9% a.m.
+              </p>
             </div>
             <div className="flex gap-4 text-[11px]">
               <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span className="size-2 rounded-full bg-liquidity" /> Liquidez
+                <span className="size-2 rounded-full bg-liquidity" /> Patrimônio
               </span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span className="size-2 rounded-full bg-debt" /> Passivos
+                <span className="size-2 rounded-full bg-gold" /> Meta 36M
               </span>
             </div>
           </div>
           <div className="mt-5 h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ left: -12, right: 8, top: 8 }}>
+              <AreaChart data={projecao} margin={{ left: -12, right: 8, top: 8 }}>
                 <defs>
                   <linearGradient id="gLiq" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--liquidity)" stopOpacity={0.5} />
                     <stop offset="100%" stopColor="var(--liquidity)" stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient id="gDebt" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--debt)" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="var(--debt)" stopOpacity={0} />
-                  </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 6" stroke="var(--border)" vertical={false} />
                 <XAxis
-                  dataKey="mes"
+                  dataKey="idade"
                   tickLine={false}
                   axisLine={false}
                   tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+                  tickFormatter={(v: number) => `${v}a`}
                 />
                 <YAxis
                   tickLine={false}
                   axisLine={false}
                   width={70}
                   tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                  tickFormatter={(v: number) => `${Math.round(v / 1000)}k`}
+                  tickFormatter={(v: number) => `${Math.round(v / 1_000_000)}M`}
                 />
                 <Tooltip
                   contentStyle={{
@@ -245,25 +303,35 @@ function Dashboard() {
                     color: "var(--foreground)",
                     fontSize: 12,
                   }}
+                  labelFormatter={(v: number) => `${v} anos`}
                   formatter={(v: number) => brl(v)}
                 />
                 <Area
                   type="monotone"
-                  dataKey="liquidez"
+                  dataKey="patrimonio"
+                  name="Patrimônio"
                   stroke="var(--liquidity)"
                   strokeWidth={2.5}
                   fill="url(#gLiq)"
                 />
                 <Area
                   type="monotone"
-                  dataKey="passivos"
-                  stroke="var(--debt)"
-                  strokeWidth={2.5}
-                  fill="url(#gDebt)"
+                  dataKey="meta"
+                  name="Meta"
+                  stroke="var(--gold)"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 5"
+                  fill="none"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            {cruzamento
+              ? `Cruzamento da meta aos ${cruzamento.idade} anos (${cruzamento.ano}) — renda passiva de ${brl(cruzamento.rendaPassiva)}/mês.`
+              : `Neste ritmo você chega a ${brl(projecao[projecao.length - 1]?.patrimonio ?? 0)} aos 66 anos — ${brl(META_PATRIMONIO - (projecao[projecao.length - 1]?.patrimonio ?? 0))} abaixo da meta.`}
+          </p>
+
         </motion.div>
 
         <motion.div

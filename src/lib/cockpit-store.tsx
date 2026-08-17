@@ -1,12 +1,25 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 
 import {
+  alvosVivos,
+  isPago,
+  useAmortizarPassivo,
+  useAtivos,
   useAtualizarStatusCliente,
   useClientes,
   useCriarCliente,
+  useCriarTransacao,
+  usePassivos,
   useRemoverCliente,
+  useTransacoes,
+  type Passivo,
 } from "@/lib/cockpit-queries";
-
+import {
+  APORTE_DIA_D,
+  META_PATRIMONIO as META,
+  cofreBlindado,
+  poderDeFogoLiquido,
+} from "@/lib/financeiro";
 
 export type EntryType = "Premium 12k" | "Ritual 4.5k" | "Ritual 2.5k" | "Oye 30k" | "Egungun 5k";
 export type EntryStatus = "Interessado" | "Confirmado" | "Pago";
@@ -32,13 +45,13 @@ export type Client = {
   paymentDate?: string | null;
 };
 
-
 export type Creditor = {
   id: string;
   name: string;
   original: number;
   balance: number;
   tag: string;
+  ordem: number;
 };
 
 export type Tx = {
@@ -56,37 +69,20 @@ export type Phase = {
   tasks: { id: string; label: string; done: boolean }[];
 };
 
-const uid = () => Math.random().toString(36).slice(2, 10);
 const today = () => new Date().toISOString().slice(0, 10);
 
-const initialCreditors: Creditor[] = [
-  { id: "seed-8", name: "Agiota", original: 95000, balance: 0, tag: "Extinto" },
-  { id: "seed-9", name: "Oluwo", original: 220000, balance: 180000, tag: "Crítico" },
-  { id: "seed-10", name: "Leka (Antigo)", original: 180000, balance: 151629, tag: "Alto" },
-  { id: "seed-11", name: "Leka (Novo)", original: 165000, balance: 150000, tag: "Alto" },
-  { id: "seed-12", name: "Banco Consignado", original: 120000, balance: 78400, tag: "Estável" },
-  { id: "seed-13", name: "Caio", original: 60000, balance: 34500, tag: "Médio" },
-  { id: "seed-14", name: "Cartões", original: 90000, balance: 52300, tag: "Rotativo" },
-  { id: "seed-15", name: "Nubank", original: 40000, balance: 18700, tag: "Baixo" },
-];
+export const APORTE_PREVISTO = APORTE_DIA_D;
+export const META_PATRIMONIO = META;
 
-const initialTx: Tx[] = [
-  { id: "seed-16", date: today(), description: "Oye 30k — Marcos Vinícius", kind: "Receita", amount: 30000 },
-  { id: "seed-17", date: today(), description: "Amortização Agiota (quitação)", kind: "Amortização", amount: 25000 },
-  { id: "seed-18", date: today(), description: "Premium 12k — Dona Iracema", kind: "Receita", amount: 12000 },
-  { id: "seed-19", date: today(), description: "Insumos e logística do ritual", kind: "Despesa", amount: 4300 },
-  { id: "seed-20", date: today(), description: "Amortização Nubank", kind: "Amortização", amount: 6200 },
-];
-
-const BASE_LIQUIDITY = 432935;
-export const APORTE_PREVISTO = 700000;
-export const META_PATRIMONIO = 36000000;
+/** Lei da destinação: receita religiosa mata Agiota e Oluwo antes do Dia D. */
+const ALVOS_PRE_DIA_D = ["agiota", "oluwo"];
 
 type Ctx = {
   clients: Client[];
   creditors: Creditor[];
   transactions: Tx[];
   liquidity: number;
+  reserva: number;
   totalDebt: number;
   paidRevenue: number;
   pipeline: number;
@@ -103,11 +99,15 @@ const CockpitContext = createContext<Ctx | null>(null);
 
 export function CockpitProvider({ children }: { children: ReactNode }) {
   const { data: clienteRows } = useClientes();
+  const { data: passivoRows } = usePassivos();
+  const { data: ativoRows } = useAtivos();
+  const { data: txRows } = useTransacoes();
+
   const criarCliente = useCriarCliente();
   const atualizarStatusCliente = useAtualizarStatusCliente();
   const removerCliente = useRemoverCliente();
-  const [creditors, setCreditors] = useState(initialCreditors);
-  const [transactions, setTransactions] = useState(initialTx);
+  const amortizarPassivo = useAmortizarPassivo();
+  const criarTransacao = useCriarTransacao();
 
   const clients = useMemo<Client[]>(
     () =>
@@ -122,9 +122,35 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
         ritualDate: r.data_ritual,
         paymentDate: r.data_pagamento,
       })),
-
     [clienteRows],
   );
+
+  const transactions = useMemo<Tx[]>(
+    () =>
+      (txRows ?? []).map((t) => ({
+        id: t.id,
+        date: t.data,
+        description: t.descricao,
+        kind: t.tipo,
+        amount: t.valor,
+      })),
+    [txRows],
+  );
+
+  const creditors = useMemo<Creditor[]>(() => {
+    const amortizado = (id: number) =>
+      (txRows ?? [])
+        .filter((t) => t.passivo_id === id && t.tipo === "Amortização")
+        .reduce((s, t) => s + t.valor, 0);
+    return (passivoRows ?? []).map((p) => ({
+      id: String(p.id),
+      name: p.credor,
+      original: p.saldo_devedor + amortizado(p.id),
+      balance: isPago(p.status) ? 0 : p.saldo_devedor,
+      tag: p.fase_quitacao ?? "Sem fase",
+      ordem: p.ordem,
+    }));
+  }, [passivoRows, txRows]);
 
   const value = useMemo<Ctx>(() => {
     const paidRevenue = clients
@@ -133,27 +159,60 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
     const pipeline = clients
       .filter((c) => c.status !== "Pago")
       .reduce((s, c) => s + ENTRY_VALUES[c.type], 0);
-    const manual = transactions.reduce((s, t) => {
-      if (t.kind === "Receita") return s + t.amount;
-      return s - t.amount;
-    }, 0);
-    const liquidity = BASE_LIQUIDITY + paidRevenue + manual;
+
+    const manual = transactions.reduce(
+      (s, t) => (t.kind === "Receita" ? s + t.amount : s - t.amount),
+      0,
+    );
+
+    const liquidity = poderDeFogoLiquido(ativoRows ?? []) + manual;
+    const reserva = cofreBlindado(ativoRows ?? []);
     const totalDebt = creditors.reduce((s, c) => s + c.balance, 0);
-    const freeSurplus = liquidity + APORTE_PREVISTO - totalDebt;
-    const progress = Math.max(0, (liquidity + APORTE_PREVISTO - totalDebt) / META_PATRIMONIO) * 100;
+    const freeSurplus = liquidity - totalDebt;
+    const progress = Math.max(0, freeSurplus / META_PATRIMONIO) * 100;
+
+    /** Direciona uma receita para o Kill List pré-Dia D (Agiota → Oluwo). */
+    const destinarReceita = async (valor: number, origem: string) => {
+      const alvos = alvosVivos(passivoRows ?? []).filter((p: Passivo) =>
+        ALVOS_PRE_DIA_D.some((t) => p.credor.toLowerCase().includes(t)),
+      );
+      let restante = valor;
+      for (const alvo of alvos) {
+        if (restante <= 0) break;
+        const abate = Math.min(restante, alvo.saldo_devedor);
+        restante -= abate;
+        await amortizarPassivo.mutateAsync({ id: alvo.id, valor: abate });
+        await criarTransacao.mutateAsync({
+          data: today(),
+          descricao: `Extermínio ${alvo.credor} — ${origem}`,
+          tipo: "Amortização",
+          valor: abate,
+          passivo_id: alvo.id,
+        });
+      }
+      if (restante > 0) {
+        await criarTransacao.mutateAsync({
+          data: today(),
+          descricao: `${origem} — troco para Poder de Fogo`,
+          tipo: "Receita",
+          valor: restante,
+        });
+      }
+    };
 
     return {
       clients,
       creditors,
       transactions,
       liquidity,
+      reserva,
       totalDebt,
       paidRevenue,
       pipeline,
       freeSurplus,
       progress,
       addClient: (c) =>
-        criarCliente.mutateAsync({
+        void criarCliente.mutateAsync({
           nome: c.name,
           tipo: c.type,
           status: c.status,
@@ -161,30 +220,41 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
           nota: c.note ?? null,
           data_ritual: c.ritualDate ?? null,
         }),
-      setClientStatus: (id, status) => atualizarStatusCliente.mutateAsync({ id, status }),
-      removeClient: (id) => removerCliente.mutateAsync(id),
+      setClientStatus: (id, status) => {
+        void (async () => {
+          await atualizarStatusCliente.mutateAsync({ id, status });
+          if (status !== "Pago") return;
+          const cliente = clients.find((c) => c.id === id);
+          if (!cliente) return;
+          await destinarReceita(ENTRY_VALUES[cliente.type], `${cliente.type} — ${cliente.name}`);
+        })();
+      },
+      removeClient: (id) => void removerCliente.mutateAsync(id),
 
       amortize: (creditorId, amount) => {
-        setCreditors((prev) =>
-          prev.map((c) =>
-            c.id === creditorId ? { ...c, balance: Math.max(0, c.balance - amount) } : c,
-          ),
-        );
+        const id = Number(creditorId);
         const target = creditors.find((c) => c.id === creditorId);
-        setTransactions((prev) => [
-          {
-            id: uid(),
-            date: today(),
-            description: `Amortização ${target?.name ?? ""}`.trim(),
-            kind: "Amortização",
-            amount,
-          },
-          ...prev,
-        ]);
+        void (async () => {
+          await amortizarPassivo.mutateAsync({ id, valor: amount });
+          await criarTransacao.mutateAsync({
+            data: today(),
+            descricao: `Amortização ${target?.name ?? ""}`.trim(),
+            tipo: "Amortização",
+            valor: amount,
+            passivo_id: id,
+          });
+        })();
       },
-      addTx: (t) => setTransactions((prev) => [{ ...t, id: uid() }, ...prev]),
+      addTx: (t) =>
+        void criarTransacao.mutateAsync({
+          data: t.date,
+          descricao: t.description,
+          tipo: t.kind,
+          valor: t.amount,
+        }),
     };
-  }, [clients, creditors, transactions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clients, creditors, transactions, ativoRows, passivoRows]);
 
   return <CockpitContext.Provider value={value}>{children}</CockpitContext.Provider>;
 }
