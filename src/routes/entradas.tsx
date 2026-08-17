@@ -36,14 +36,19 @@ import {
   diasAte,
   prazoLabel,
   potencial,
+  potencialLiquido,
   progresso,
   realizado,
+  realizadoLiquido,
   useAtualizarReceita,
   useCriarReceita,
   useCrmReceitas,
+  usePassivos,
   useRemoverReceita,
   type CrmReceita,
 } from "@/lib/cockpit-queries";
+import { placarFase1 } from "@/lib/financeiro";
+
 import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
