@@ -36,9 +36,12 @@ import {
   useCriarTarefa,
   useRemoverTarefa,
   useRoadmap,
+  useParametros,
+  useSalvarParametros,
   type RoadmapFase,
   type RoadmapTarefa,
 } from "@/lib/cockpit-queries";
+import { pontede90Dias, viradaDeChave } from "@/lib/financeiro";
 
 export const Route = createFileRoute("/roadmap")({
   head: () => ({
@@ -444,7 +447,7 @@ function PonteVirada() {
     potiguara_meses_restantes: parametros?.potiguara_meses_restantes ?? 3,
   };
 
-  const meses = pontede90Dias(p);
+  const meses = pontede90Dias(p, 4);
   const virada = viradaDeChave(p);
 
   const openSheet = () => {
