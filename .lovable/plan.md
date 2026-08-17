@@ -29,9 +29,17 @@ Assim, ao matar qualquer passivo antes do Dia D, ele aparece verde aqui e some d
 ### 4. Indicador de impacto
 No topo da Ofensiva, ao lado de "Falta vender": um contador "Passivo já exterminado: R$ X de R$ Y (Z%)", com a variação de Sobra Livre projetada. É o número que responde "como eu estou, de forma atualizada".
 
+### 5. Lançar a amortização manual (você não estava enganado, mas quase)
+O lançamento manual **já existe hoje** na tela Passivos: botão "Amortizar / Exterminar", com valor e seletor de origem do dinheiro (CDB/caixa ou fonte externa) — ele baixa o saldo do credor e grava o lançamento no histórico. É essa gravação que a Ofensiva vai passar a ler.
+
+O que falta, e entra no plano: **poder lançar sem sair da Ofensiva**. Cada credor da Kill List na nova faixa ganha o botão "Amortizar", abrindo o mesmo Side Sheet (valor + origem + data do pagamento), com a cascata e a Sobra Livre recalculando na hora após confirmar.
+
+
+
 ## Detalhes técnicos
 
 - `src/lib/financeiro.ts`: nova função `exterminioRealizado({ passivos, transacoes, clientesPagos })` que reconstrói o saldo original por credor a partir de `transacoes.passivo_id` e devolve abatido/original/restante por alvo; `cascataFase1DiaD` passa a receber esse resumo e a expor `ganhoAntecipacao` (sobra livre atual − sobra do baseline do dossiê).
 - `src/lib/cockpit-queries.ts`: hook/seletor de transações agrupadas por `passivo_id` (dados já existem na tabela `transacoes`).
-- `src/routes/ofensiva.tsx`: novo bloco Kill List, bloco de extermínio consolidado e o contador de impacto no cabeçalho.
+- `src/routes/ofensiva.tsx`: novo bloco Kill List, bloco de extermínio consolidado, contador de impacto no cabeçalho e o Side Sheet de amortização reaproveitado.
+- Sheet de amortização extraído de `src/routes/passivos.tsx` para um componente compartilhado (`src/components/amortizar-sheet.tsx`), sem mudar o comportamento atual na tela de Passivos; ganha campo de data do pagamento.
 - Sem migração de banco — usa `passivos`, `transacoes` e `crm_clientes` já existentes.
