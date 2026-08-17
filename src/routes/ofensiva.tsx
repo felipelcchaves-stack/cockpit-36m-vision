@@ -7,12 +7,12 @@ import { PageHeader } from "@/components/page-header";
 import { Progress } from "@/components/ui/progress";
 import { brl, useCockpit } from "@/lib/cockpit-store";
 import {
-  realizadoLiquido,
   useAtivos,
   useCrmReceitas,
   usePassivos,
   type CrmReceita,
 } from "@/lib/cockpit-queries";
+
 import {
   META_PATRIMONIO,
   RENDA_PASSIVA_ALVO,
@@ -154,6 +154,44 @@ function Ofensiva() {
           className={`mt-4 h-2 bg-secondary ${c.faltaVender === 0 ? "[&>div]:bg-liquidity" : ""}`}
         />
       </motion.div>
+
+      {/* Já capturado: rituais efetivamente pagos */}
+      <div className="glass-card rounded-2xl p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Já capturado (rituais pagos)</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Dinheiro que já entrou e já baixou o saldo de Agiota/Oluwo — por isso não aparece mais
+              como abatimento a fazer.
+            </p>
+          </div>
+          <p className="num text-2xl font-semibold text-liquidity">{brlExato(pagos)}</p>
+        </div>
+        {clientesPagos.length > 0 ? (
+          <ul className="mt-4 divide-y divide-border/60">
+            {clientesPagos.map((cl) => (
+              <li key={cl.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span className="min-w-0">
+                  <span className="block truncate">{cl.name}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
+                    {cl.type}
+                    {cl.paymentDate ? ` · pago em ${cl.paymentDate.split("-").reverse().join("/")}` : ""}
+                  </span>
+                </span>
+                <span className="num shrink-0 text-liquidity">
+                  {brlExato(liquidoCliente(cl.valor, cl.type))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Nenhum ritual marcado como Pago ainda.
+          </p>
+        )}
+      </div>
+
+
 
       {/* Degraus da cascata */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
