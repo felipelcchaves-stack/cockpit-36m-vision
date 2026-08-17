@@ -35,8 +35,14 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
-  const { liquidity, totalDebt, freeSurplus, progress, creditors, clients, pipeline } =
-    useCockpit();
+  const { progress, creditors, clients, pipeline } = useCockpit();
+  const { data: passivosRows = [], isLoading: loadingPassivos } = usePassivos();
+  const { data: ativosRows = [], isLoading: loadingAtivos } = useAtivos();
+
+  const totalDebt = sumPassivos(passivosRows);
+  const liquidity = sumPoderDeFogo(ativosRows);
+  const freeSurplus = liquidity - totalDebt;
+  const passivosQuitados = passivosRows.filter((p) => isPago(p.status)).length;
 
   const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago"];
   const chartData = months.map((m, i) => ({
