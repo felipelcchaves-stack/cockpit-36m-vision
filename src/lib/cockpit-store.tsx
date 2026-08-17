@@ -4,6 +4,7 @@ import {
   alvosVivos,
   isPago,
   useAmortizarPassivo,
+  useCreditarAtivo,
   useAtivos,
   useAtualizarStatusCliente,
   useClientes,
@@ -214,6 +215,13 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
         const destino = (ativoRows ?? []).find((a) => a.id === ativoId);
         if (destino) {
           await creditarAtivo.mutateAsync({ ativo: destino, valor: sobra, motivo: origem });
+          // Contrapartida: o caixa livre vira saldo aplicado, sem contar duas vezes.
+          await criarTransacao.mutateAsync({
+            data: today(),
+            descricao: `Aplicação em ${destino.nome} — ${origem}`,
+            tipo: "Despesa",
+            valor: sobra,
+          });
         } else {
           await criarTransacao.mutateAsync({
             data: today(),
