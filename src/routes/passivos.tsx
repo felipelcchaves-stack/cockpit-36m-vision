@@ -18,7 +18,23 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { brl, useCockpit } from "@/lib/cockpit-store";
-import { isCartao, isPago, killList, sumPassivos, usePassivos } from "@/lib/cockpit-queries";
+import {
+  isCartao,
+  isPago,
+  isReservaBlindada,
+  killList,
+  sumPassivos,
+  useAtivos,
+  useDebitarAtivo,
+  usePassivos,
+} from "@/lib/cockpit-queries";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/passivos")({
   head: () => ({
@@ -47,6 +63,12 @@ const faseTone = (fase: string | null) => {
 function Passivos() {
   const { data: rows = [], isLoading, error } = usePassivos();
   const { creditors, amortize } = useCockpit();
+  const { data: ativos = [] } = useAtivos();
+  const debitar = useDebitarAtivo();
+
+  // Fontes de caixa disponíveis — o Fundo de Reserva é blindado e nunca aparece.
+  const fontes = ativos.filter((a) => !isReservaBlindada(a));
+  const [origem, setOrigem] = useState("externo");
 
   const [alvo, setAlvo] = useState<{ id: string; nome: string; saldo: number } | null>(null);
   const [valor, setValor] = useState("");
@@ -75,17 +97,43 @@ function Passivos() {
   const abrirAmortizacao = (id: number, credor: string, saldo: number) => {
     setAlvo({ id: String(id), nome: credor, saldo });
     setValor("");
+    setOrigem(fontes[0] ? `ativo:${fontes[0].id}` : "externo");
   };
 
-  const confirmarAmortizacao = () => {
+  const confirmarAmortizacao = async () => {
     if (!alvo) return;
     const v = Number(valor.replace(/\./g, "").replace(",", "."));
     if (!v || v <= 0) {
       toast.error("Informe o valor da amortização");
       return;
     }
-    amortize(alvo.id, Math.min(v, alvo.saldo));
-    toast.success(`Amortização de ${brl(v)} registrada em ${alvo.nome}`);
+    const pago = Math.min(v, alvo.saldo);
+    const fonte = origem.startsWith("ativo:")
+      ? fontes.find((a) => a.id === Number(origem.slice(6)))
+      : undefined;
+
+    if (fonte && fonte.valor < pago) {
+      toast.error(`${fonte.nome} tem apenas ${brl(fonte.valor)} disponíveis`);
+      return;
+    }
+
+    amortize(alvo.id, pago);
+    if (fonte) {
+      try {
+        await debitar.mutateAsync({
+          ativo: fonte,
+          valor: pago,
+          motivo: `Amortização ${alvo.nome}`,
+        });
+      } catch {
+        toast.error("Passivo abatido, mas não consegui debitar a origem do dinheiro");
+      }
+    }
+    toast.success(
+      fonte
+        ? `${brl(pago)} saíram de ${fonte.nome} para abater ${alvo.nome}`
+        : `Amortização de ${brl(pago)} registrada em ${alvo.nome}`,
+    );
     setAlvo(null);
   };
 
@@ -214,6 +262,30 @@ function Passivos() {
                 placeholder="30000"
               />
             </div>
+            <div className="space-y-2">
+              <Label>De onde saiu o dinheiro</Label>
+              <Select value={origem} onValueChange={setOrigem}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {fontes.map((a) => (
+                    <SelectItem key={a.id} value={`ativo:${a.id}`}>
+                      {a.nome} · {brl(a.valor)}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="externo">Outro / dinheiro externo</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {origem === "externo"
+                  ? "Nenhum caixa do cockpit será debitado."
+                  : "O saldo dessa conta cai no mesmo valor e o saque entra no extrato do lastro."}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                O Fundo de Reserva de R$ 40.000 é blindado e não entra nesta lista.
+              </p>
+            </div>
             <div className="flex gap-2">
               <Button
                 variant="secondary"
@@ -222,7 +294,7 @@ function Passivos() {
               >
                 Extermínio total
               </Button>
-              <Button className="flex-1" onClick={confirmarAmortizacao}>
+              <Button className="flex-1" onClick={() => void confirmarAmortizacao()} disabled={debitar.isPending}>
                 Registrar
               </Button>
             </div>
