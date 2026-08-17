@@ -38,16 +38,9 @@ const faseTone = (fase: string | null) => {
 
 function Passivos() {
   const { data: rows = [], isLoading, error } = usePassivos();
-  const { creditors, amortize, addTx } = useCockpit();
-  const { data: ativos = [] } = useAtivos();
-  const debitar = useDebitarAtivo();
+  const { creditors } = useCockpit();
 
-  // Fontes de caixa disponíveis — o Fundo de Reserva é blindado e nunca aparece.
-  const fontes = ativos.filter((a) => !isReservaBlindada(a));
-  const [origem, setOrigem] = useState("externo");
-
-  const [alvo, setAlvo] = useState<{ id: string; nome: string; saldo: number } | null>(null);
-  const [valor, setValor] = useState("");
+  const [alvo, setAlvo] = useState<AlvoAmortizacao | null>(null);
   const [exterminado, setExterminado] = useState<string | null>(null);
   const vivosRef = useRef<string[] | null>(null);
 
