@@ -12,12 +12,18 @@ import {
 import { ArrowDownRight, ArrowUpRight, Flame, Sparkles, Target, Wallet } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
-import { brl, useCockpit } from "@/lib/cockpit-store";
+import { ENTRY_VALUES, brl, useCockpit } from "@/lib/cockpit-store";
 import {
+  dataBR,
+  diasAte,
   isPago,
+  potencial,
+  progresso,
+  realizado,
   sumPassivos,
   sumPoderDeFogo,
   useAtivos,
+  useCrmReceitas,
   usePassivos,
 } from "@/lib/cockpit-queries";
 import { Progress } from "@/components/ui/progress";
@@ -45,6 +51,7 @@ function Dashboard() {
   const { progress, creditors, clients, pipeline } = useCockpit();
   const { data: passivosRows = [], isLoading: loadingPassivos } = usePassivos();
   const { data: ativosRows = [], isLoading: loadingAtivos } = useAtivos();
+  const { data: receitas = [] } = useCrmReceitas();
 
   const totalDebt = sumPassivos(passivosRows);
   const liquidity = sumPoderDeFogo(ativosRows);
@@ -61,6 +68,41 @@ function Dashboard() {
   const paidCreditors = creditors.filter((c) => c.balance === 0).length;
   const nextTarget = [...creditors].filter((c) => c.balance > 0).sort((a, b) => a.balance - b.balance)[0];
   const ritualsToClear = nextTarget ? Math.max(1, Math.ceil(nextTarget.balance / 30000)) : 0;
+
+  // Fluxo de caixa previsto dos próximos 90 dias (rituais + clientes a receber)
+  const entradasPrevistas = [
+    ...receitas
+      .filter((r) => r.data_pagamento_prevista)
+      .map((r) => ({
+        label: r.produto,
+        data: r.data_pagamento_prevista!,
+        valor: potencial(r) - realizado(r),
+      })),
+    ...clients
+      .filter((c) => c.status !== "Pago" && c.ritualDate)
+      .map((c) => ({ label: c.name, data: c.ritualDate!, valor: ENTRY_VALUES[c.type] })),
+  ].filter((e) => e.valor > 0);
+
+  const buckets = [0, 1, 2].map((i) => ({
+    faixa: i === 0 ? "0-30d" : i === 1 ? "31-60d" : "61-90d",
+    valor: entradasPrevistas
+      .filter((e) => {
+        const d = diasAte(e.data);
+        return d !== null && d >= i * 30 && d < (i + 1) * 30;
+      })
+      .reduce((s, e) => s + e.valor, 0),
+  }));
+
+  const atrasados = entradasPrevistas
+    .filter((e) => (diasAte(e.data) ?? 0) < 0)
+    .sort((a, b) => (diasAte(a.data) ?? 0) - (diasAte(b.data) ?? 0));
+
+  const semData = receitas.filter((r) => !r.data_pagamento_prevista && !r.data_ritual);
+
+  const ranking = [...receitas]
+    .map((r) => ({ r, gap: potencial(r) - realizado(r), pct: progresso(r) }))
+    .sort((a, b) => b.gap - a.gap)
+    .slice(0, 3);
 
   const cards = [
     {
@@ -284,6 +326,84 @@ function Dashboard() {
               <span className="text-sm text-muted-foreground">/{clients.length} pagos</span>
             </p>
           </div>
+        </motion.div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-2xl p-5 lg:col-span-2"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold">Caixa previsto — próximos 90 dias</h2>
+              <p className="text-xs text-muted-foreground">
+                Rituais com pagamento previsto e clientes ainda não pagos.
+              </p>
+            </div>
+            <p className="num text-lg font-semibold text-liquidity">
+              {brl(buckets.reduce((s, b) => s + b.valor, 0))}
+            </p>
+          </div>
+          <div className="mt-4 space-y-4">
+            {buckets.map((b) => {
+              const max = Math.max(1, ...buckets.map((x) => x.valor));
+              return (
+                <div key={b.faixa}>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">{b.faixa}</span>
+                    <span className="num">{brl(b.valor)}</span>
+                  </div>
+                  <Progress value={(b.valor / max) * 100} className="mt-2 h-2 bg-secondary" />
+                </div>
+              );
+            })}
+          </div>
+
+          <h3 className="mt-6 text-sm font-semibold">Onde focar agora</h3>
+          <ul className="mt-3 space-y-2 text-sm">
+            {ranking.map(({ r, gap, pct }) => (
+              <li key={r.id} className="flex items-center justify-between gap-3">
+                <span>
+                  {r.produto}{" "}
+                  <span className="text-[11px] text-muted-foreground">({pct}% da meta)</span>
+                </span>
+                <span className="num text-gold">{brl(gap)} parados</span>
+              </li>
+            ))}
+            {ranking.length === 0 && (
+              <li className="text-xs text-muted-foreground">Cadastre produtos no catálogo.</li>
+            )}
+          </ul>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-debt/25 bg-debt/[0.06] p-5"
+        >
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-debt">
+            Precisa da sua atenção
+          </h2>
+          <ul className="mt-4 space-y-3 text-sm">
+            {atrasados.slice(0, 4).map((e) => (
+              <li key={`${e.label}-${e.data}`} className="flex justify-between gap-3">
+                <span>{e.label}</span>
+                <span className="num text-debt">
+                  {dataBR(e.data)} · {brl(e.valor)}
+                </span>
+              </li>
+            ))}
+            {semData.length > 0 && (
+              <li className="text-muted-foreground">
+                {semData.length} produto(s) sem data de ritual ou pagamento.
+              </li>
+            )}
+            {atrasados.length === 0 && semData.length === 0 && (
+              <li className="text-muted-foreground">Tudo em dia. Nenhum atraso previsto.</li>
+            )}
+          </ul>
         </motion.div>
       </div>
     </div>
