@@ -1,5 +1,13 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
+import {
+  useAtualizarStatusCliente,
+  useClientes,
+  useCriarCliente,
+  useRemoverCliente,
+} from "@/lib/cockpit-queries";
+
+
 export type EntryType = "Premium 12k" | "Ritual 4.5k" | "Ritual 2.5k" | "Oye 30k" | "Egungun 5k";
 export type EntryStatus = "Interessado" | "Confirmado" | "Pago";
 
