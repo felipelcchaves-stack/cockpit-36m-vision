@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
-import { ENTRY_VALUES, brl, useCockpit } from "@/lib/cockpit-store";
+import { brl, useCockpit } from "@/lib/cockpit-store";
 import {
   dataBR,
   diasAte,
@@ -124,7 +124,7 @@ function Dashboard() {
       })),
     ...clients
       .filter((c) => c.status !== "Pago" && c.ritualDate)
-      .map((c) => ({ label: c.name, data: c.ritualDate!, valor: ENTRY_VALUES[c.type] })),
+      .map((c) => ({ label: c.name, data: c.ritualDate!, valor: c.valor })),
   ].filter((e) => e.valor > 0);
 
   const buckets = [0, 1, 2].map((i) => ({
