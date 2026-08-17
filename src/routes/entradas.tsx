@@ -224,9 +224,103 @@ function Entradas() {
   );
 }
 
+const CAMPANHA_STATUS = ["Em Captação", "Confirmados", "Concluído", "Pausado"] as const;
+
+type ReceitaForm = {
+  produto: string;
+  ticket_medio: string;
+  meta_quantidade: string;
+  quantidade_realizada: string;
+  status_campanha: string;
+};
+
+const emptyForm: ReceitaForm = {
+  produto: "",
+  ticket_medio: "",
+  meta_quantidade: "",
+  quantidade_realizada: "0",
+  status_campanha: "Em Captação",
+};
+
 function CrmReceitasReais() {
   const { data = [], isLoading, error } = useCrmReceitas();
+  const criar = useCriarReceita();
+  const atualizar = useAtualizarReceita();
+  const remover = useRemoverReceita();
+
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [form, setForm] = useState<ReceitaForm>(emptyForm);
+  const [deleteTarget, setDeleteTarget] = useState<CrmReceita | null>(null);
+
   const totalPotencial = data.reduce((s, r) => s + potencial(r), 0);
+  const totalRealizado = data.reduce((s, r) => s + realizado(r), 0);
+  const pctGeral = totalPotencial > 0 ? Math.min(100, (totalRealizado / totalPotencial) * 100) : 0;
+
+  const openNew = () => {
+    setEditId(null);
+    setForm(emptyForm);
+    setSheetOpen(true);
+  };
+
+  const openEdit = (r: CrmReceita) => {
+    setEditId(r.id);
+    setForm({
+      produto: r.produto,
+      ticket_medio: String(r.ticket_medio),
+      meta_quantidade: String(r.meta_quantidade),
+      quantidade_realizada: String(r.quantidade_realizada),
+      status_campanha: r.status_campanha ?? "Em Captação",
+    });
+    setSheetOpen(true);
+  };
+
+  const saveForm = async () => {
+    if (!form.produto.trim()) {
+      toast.error("Informe o nome do produto");
+      return;
+    }
+    const payload = {
+      produto: form.produto.trim(),
+      ticket_medio: Number(form.ticket_medio) || 0,
+      meta_quantidade: Number(form.meta_quantidade) || 0,
+      quantidade_realizada: Number(form.quantidade_realizada) || 0,
+      status_campanha: form.status_campanha,
+    };
+    try {
+      if (editId === null) {
+        await criar.mutateAsync(payload);
+        toast.success(`${payload.produto} adicionado ao catálogo`);
+      } else {
+        await atualizar.mutateAsync({ id: editId, ...payload });
+        toast.success(`${payload.produto} atualizado`);
+      }
+      setSheetOpen(false);
+    } catch {
+      toast.error("Não foi possível salvar no banco");
+    }
+  };
+
+  const step = async (r: CrmReceita, delta: number) => {
+    const next = Math.max(0, r.quantidade_realizada + delta);
+    try {
+      await atualizar.mutateAsync({ id: r.id, quantidade_realizada: next });
+    } catch {
+      toast.error("Não foi possível atualizar o progresso");
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await remover.mutateAsync(deleteTarget.id);
+      toast.success(`${deleteTarget.produto} removido`);
+    } catch {
+      toast.error("Não foi possível remover");
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
 
   return (
     <motion.section
@@ -241,28 +335,45 @@ function CrmReceitasReais() {
             Potencial = meta de quantidade x ticket médio de cada produto.
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-            Potencial total
-          </p>
-          <p className="num text-2xl font-semibold gold-text">{brl(totalPotencial)}</p>
+        <div className="flex items-end gap-5">
+          <div className="text-right">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Realizado</p>
+            <p className="num text-lg font-semibold text-liquidity">{brl(totalRealizado)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Potencial total
+            </p>
+            <p className="num text-2xl font-semibold gold-text">{brl(totalPotencial)}</p>
+          </div>
+          <Button variant="secondary" className="gap-2" onClick={openNew}>
+            <Plus className="size-4" /> Novo produto
+          </Button>
         </div>
       </div>
 
-      {error && (
-        <p className="mt-4 text-sm text-debt">Não foi possível carregar as receitas.</p>
-      )}
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>Avanço geral da meta</span>
+          <span className="num">{pctGeral.toFixed(1)}%</span>
+        </div>
+        <Progress value={pctGeral} className="mt-2 h-2" />
+      </div>
+
+      {error && <p className="mt-4 text-sm text-debt">Não foi possível carregar as receitas.</p>}
       {isLoading && <p className="mt-4 text-sm text-muted-foreground">Carregando receitas...</p>}
 
       <div className="mt-5 overflow-x-auto">
-        <table className="w-full min-w-[620px] text-sm">
+        <table className="w-full min-w-[860px] text-sm">
           <thead>
             <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
               <th className="pb-3 font-medium">Produto</th>
               <th className="pb-3 font-medium">Status</th>
+              <th className="pb-3 font-medium">Progresso</th>
               <th className="pb-3 text-right font-medium">Ticket médio</th>
               <th className="pb-3 text-right font-medium">Meta</th>
               <th className="pb-3 text-right font-medium">Potencial</th>
+              <th className="pb-3 text-right font-medium">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -274,16 +385,157 @@ function CrmReceitasReais() {
                     {r.status_campanha ?? "—"}
                   </span>
                 </td>
+                <td className="min-w-[210px] py-3">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-6 text-muted-foreground"
+                      onClick={() => void step(r, -1)}
+                      aria-label={`Remover uma venda de ${r.produto}`}
+                    >
+                      <Minus className="size-3" />
+                    </Button>
+                    <div className="flex-1">
+                      <Progress value={progresso(r)} className="h-1.5" />
+                      <p className="num mt-1 text-[10px] text-muted-foreground">
+                        {r.quantidade_realizada}/{r.meta_quantidade} · {brl(realizado(r))}
+                      </p>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-6 text-liquidity"
+                      onClick={() => void step(r, 1)}
+                      aria-label={`Registrar uma venda de ${r.produto}`}
+                    >
+                      <Plus className="size-3" />
+                    </Button>
+                  </div>
+                </td>
                 <td className="num py-3 text-right text-muted-foreground">{brl(r.ticket_medio)}</td>
                 <td className="num py-3 text-right text-muted-foreground">{r.meta_quantidade}x</td>
                 <td className="num py-3 text-right font-semibold text-liquidity">
                   {brl(potencial(r))}
+                </td>
+                <td className="py-3">
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-7 text-muted-foreground hover:text-gold"
+                      onClick={() => openEdit(r)}
+                      aria-label={`Editar ${r.produto}`}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-7 text-muted-foreground hover:text-debt"
+                      onClick={() => setDeleteTarget(r)}
+                      aria-label={`Remover ${r.produto}`}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>{editId === null ? "Novo produto" : "Editar produto"}</SheetTitle>
+            <SheetDescription>
+              Dados gravados direto no catálogo real de receitas.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-5 px-4">
+            <div className="space-y-2">
+              <Label htmlFor="prod">Produto</Label>
+              <Input
+                id="prod"
+                value={form.produto}
+                onChange={(e) => setForm({ ...form, produto: e.target.value })}
+                placeholder="Ex: Ritual Premium"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="ticket">Ticket médio (R$)</Label>
+                <Input
+                  id="ticket"
+                  inputMode="numeric"
+                  value={form.ticket_medio}
+                  onChange={(e) => setForm({ ...form, ticket_medio: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="meta">Meta (qtd.)</Label>
+                <Input
+                  id="meta"
+                  inputMode="numeric"
+                  value={form.meta_quantidade}
+                  onChange={(e) => setForm({ ...form, meta_quantidade: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="feito">Quantidade já realizada</Label>
+              <Input
+                id="feito"
+                inputMode="numeric"
+                value={form.quantidade_realizada}
+                onChange={(e) => setForm({ ...form, quantidade_realizada: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Status da campanha</Label>
+              <Select
+                value={form.status_campanha}
+                onValueChange={(v) => setForm({ ...form, status_campanha: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CAMPANHA_STATUS.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => void saveForm()}
+              disabled={criar.isPending || atualizar.isPending}
+            >
+              {editId === null ? "Adicionar ao catálogo" : "Salvar alterações"}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover {deleteTarget?.produto}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este produto será excluído do catálogo de receitas. A ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmDelete()}>Remover</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.section>
   );
 }
