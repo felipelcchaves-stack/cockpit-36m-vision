@@ -31,6 +31,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { brl, useCockpit, type Tx } from "@/lib/cockpit-store";
+import { useAtivos, useRendimentos } from "@/lib/cockpit-queries";
+import { brlExato, resumoRendimento } from "@/lib/financeiro";
 
 export const Route = createFileRoute("/historico")({
   head: () => ({
@@ -61,7 +63,11 @@ function Historico() {
   const [description, setDescription] = useState("");
   const [kind, setKind] = useState<Tx["kind"]>("Despesa");
   const [amount, setAmount] = useState("");
-  const [filter, setFilter] = useState<"Todas" | Tx["kind"]>("Todas");
+  const [filter, setFilter] = useState<"Todas" | "Rendimentos" | Tx["kind"]>("Todas");
+  const { data: rendimentos = [] } = useRendimentos();
+  const { data: ativos = [] } = useAtivos();
+  const resumo = resumoRendimento(rendimentos);
+  const nomeAtivo = (id: number) => ativos.find((a) => a.id === id)?.nome ?? `Ativo ${id}`;
 
   const submit = () => {
     const v = Number(amount.replace(/\./g, "").replace(",", "."));
@@ -92,7 +98,7 @@ function Historico() {
       />
 
       <div className="flex flex-wrap gap-2">
-        {(["Todas", ...kinds] as const).map((k) => (
+        {(["Todas", ...kinds, "Rendimentos"] as const).map((k) => (
           <Button
             key={k}
             size="sm"
@@ -104,6 +110,78 @@ function Historico() {
         ))}
       </div>
 
+      {filter === "Rendimentos" ? (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card overflow-hidden rounded-2xl"
+        >
+          <div className="grid gap-3 border-b border-border/60 p-5 sm:grid-cols-3">
+            {[
+              { label: "Rendeu hoje", value: resumo.hoje },
+              { label: "Rendeu no mês", value: resumo.mes },
+              { label: "Rendeu no total", value: resumo.total },
+            ].map((m) => (
+              <div key={m.label}>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {m.label}
+                </p>
+                <p className="num mt-1 text-lg font-semibold text-liquidity">{brlExato(m.value)}</p>
+              </div>
+            ))}
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Data</TableHead>
+                <TableHead>Ativo</TableHead>
+                <TableHead>Origem</TableHead>
+                <TableHead className="text-right">Saldo anterior</TableHead>
+                <TableHead className="text-right">Juros</TableHead>
+                <TableHead className="text-right">Saldo final</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rendimentos.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                    Nenhum fechamento ainda. Rode "Render agora" na Operação Dia D.
+                  </TableCell>
+                </TableRow>
+              )}
+              {rendimentos.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="num text-xs text-muted-foreground">
+                    {r.data.split("-").reverse().join("/")}
+                  </TableCell>
+                  <TableCell className="text-sm">{nomeAtivo(r.ativo_id)}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                        r.origem === "ajuste"
+                          ? "border-gold/30 bg-gold/10 text-gold"
+                          : "border-liquidity/30 bg-liquidity/10 text-liquidity"
+                      }`}
+                    >
+                      {r.origem === "ajuste" ? "Ajuste do extrato" : "Rendimento"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="num text-right text-xs text-muted-foreground">
+                    {brlExato(r.saldo_anterior)}
+                  </TableCell>
+                  <TableCell
+                    className={`num text-right text-sm ${r.juros < 0 ? "text-debt" : "text-liquidity"}`}
+                  >
+                    {r.juros >= 0 ? "+" : "−"}
+                    {brlExato(Math.abs(r.juros))}
+                  </TableCell>
+                  <TableCell className="num text-right text-sm">{brlExato(r.saldo_final)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </motion.div>
+      ) : (
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -143,6 +221,7 @@ function Historico() {
           </TableBody>
         </Table>
       </motion.div>
+      )}
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md">
