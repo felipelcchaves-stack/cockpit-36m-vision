@@ -49,32 +49,32 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const today = () => new Date().toISOString().slice(0, 10);
 
 const initialClients: Client[] = [
-  { id: uid(), name: "Marcos Vinícius", type: "Oye 30k", status: "Pago" },
-  { id: uid(), name: "Dona Iracema", type: "Premium 12k", status: "Pago" },
-  { id: uid(), name: "Rafael Antunes", type: "Ritual 4.5k", status: "Confirmado" },
-  { id: uid(), name: "Juliana Prado", type: "Egungun 5k", status: "Confirmado" },
-  { id: uid(), name: "Beatriz Lima", type: "Ritual 2.5k", status: "Interessado" },
-  { id: uid(), name: "Sr. Alvarenga", type: "Premium 12k", status: "Interessado" },
-  { id: uid(), name: "Cláudia Rocha", type: "Ritual 4.5k", status: "Interessado" },
+  { id: "seed-1", name: "Marcos Vinícius", type: "Oye 30k", status: "Pago" },
+  { id: "seed-2", name: "Dona Iracema", type: "Premium 12k", status: "Pago" },
+  { id: "seed-3", name: "Rafael Antunes", type: "Ritual 4.5k", status: "Confirmado" },
+  { id: "seed-4", name: "Juliana Prado", type: "Egungun 5k", status: "Confirmado" },
+  { id: "seed-5", name: "Beatriz Lima", type: "Ritual 2.5k", status: "Interessado" },
+  { id: "seed-6", name: "Sr. Alvarenga", type: "Premium 12k", status: "Interessado" },
+  { id: "seed-7", name: "Cláudia Rocha", type: "Ritual 4.5k", status: "Interessado" },
 ];
 
 const initialCreditors: Creditor[] = [
-  { id: uid(), name: "Agiota", original: 95000, balance: 0, tag: "Extinto" },
-  { id: uid(), name: "Oluwo", original: 220000, balance: 180000, tag: "Crítico" },
-  { id: uid(), name: "Leka (Antigo)", original: 180000, balance: 151629, tag: "Alto" },
-  { id: uid(), name: "Leka (Novo)", original: 165000, balance: 150000, tag: "Alto" },
-  { id: uid(), name: "Banco Consignado", original: 120000, balance: 78400, tag: "Estável" },
-  { id: uid(), name: "Caio", original: 60000, balance: 34500, tag: "Médio" },
-  { id: uid(), name: "Cartões", original: 90000, balance: 52300, tag: "Rotativo" },
-  { id: uid(), name: "Nubank", original: 40000, balance: 18700, tag: "Baixo" },
+  { id: "seed-8", name: "Agiota", original: 95000, balance: 0, tag: "Extinto" },
+  { id: "seed-9", name: "Oluwo", original: 220000, balance: 180000, tag: "Crítico" },
+  { id: "seed-10", name: "Leka (Antigo)", original: 180000, balance: 151629, tag: "Alto" },
+  { id: "seed-11", name: "Leka (Novo)", original: 165000, balance: 150000, tag: "Alto" },
+  { id: "seed-12", name: "Banco Consignado", original: 120000, balance: 78400, tag: "Estável" },
+  { id: "seed-13", name: "Caio", original: 60000, balance: 34500, tag: "Médio" },
+  { id: "seed-14", name: "Cartões", original: 90000, balance: 52300, tag: "Rotativo" },
+  { id: "seed-15", name: "Nubank", original: 40000, balance: 18700, tag: "Baixo" },
 ];
 
 const initialTx: Tx[] = [
-  { id: uid(), date: today(), description: "Oye 30k — Marcos Vinícius", kind: "Receita", amount: 30000 },
-  { id: uid(), date: today(), description: "Amortização Agiota (quitação)", kind: "Amortização", amount: 25000 },
-  { id: uid(), date: today(), description: "Premium 12k — Dona Iracema", kind: "Receita", amount: 12000 },
-  { id: uid(), date: today(), description: "Insumos e logística do ritual", kind: "Despesa", amount: 4300 },
-  { id: uid(), date: today(), description: "Amortização Nubank", kind: "Amortização", amount: 6200 },
+  { id: "seed-16", date: today(), description: "Oye 30k — Marcos Vinícius", kind: "Receita", amount: 30000 },
+  { id: "seed-17", date: today(), description: "Amortização Agiota (quitação)", kind: "Amortização", amount: 25000 },
+  { id: "seed-18", date: today(), description: "Premium 12k — Dona Iracema", kind: "Receita", amount: 12000 },
+  { id: "seed-19", date: today(), description: "Insumos e logística do ritual", kind: "Despesa", amount: 4300 },
+  { id: "seed-20", date: today(), description: "Amortização Nubank", kind: "Amortização", amount: 6200 },
 ];
 
 const initialPhases: Phase[] = [
@@ -83,9 +83,9 @@ const initialPhases: Phase[] = [
     title: "Ofensiva Sazonal",
     subtitle: "Pré-Dia D — captação máxima",
     tasks: [
-      { id: uid(), label: "Mapear 20 leads Premium", done: true },
-      { id: uid(), label: "Fechar 3 Oye 30k", done: true },
-      { id: uid(), label: "Agenda de rituais lotada", done: false },
+      { id: "seed-21", label: "Mapear 20 leads Premium", done: true },
+      { id: "seed-22", label: "Fechar 3 Oye 30k", done: true },
+      { id: "seed-23", label: "Agenda de rituais lotada", done: false },
     ],
   },
   {
@@ -93,9 +93,9 @@ const initialPhases: Phase[] = [
     title: "Operação Dia D",
     subtitle: "Liberação da liquidez travada",
     tasks: [
-      { id: uid(), label: "Documentação do aporte", done: true },
-      { id: uid(), label: "Confirmar R$ 700.000 de aporte", done: false },
-      { id: uid(), label: "Plano de alocação assinado", done: false },
+      { id: "seed-24", label: "Documentação do aporte", done: true },
+      { id: "seed-25", label: "Confirmar R$ 700.000 de aporte", done: false },
+      { id: "seed-26", label: "Plano de alocação assinado", done: false },
     ],
   },
   {
@@ -103,9 +103,9 @@ const initialPhases: Phase[] = [
     title: "Ponte de 90 Dias",
     subtitle: "Queima acelerada de passivos",
     tasks: [
-      { id: uid(), label: "Quitar Oluwo", done: false },
-      { id: uid(), label: "Renegociar Leka Novo", done: false },
-      { id: uid(), label: "Zerar cartões rotativos", done: false },
+      { id: "seed-27", label: "Quitar Oluwo", done: false },
+      { id: "seed-28", label: "Renegociar Leka Novo", done: false },
+      { id: "seed-29", label: "Zerar cartões rotativos", done: false },
     ],
   },
   {
@@ -113,8 +113,8 @@ const initialPhases: Phase[] = [
     title: "A Virada de Chave",
     subtitle: "De sobrevivência a acumulação",
     tasks: [
-      { id: uid(), label: "Reserva de 6 meses", done: false },
-      { id: uid(), label: "Primeiro aporte em renda fixa", done: false },
+      { id: "seed-30", label: "Reserva de 6 meses", done: false },
+      { id: "seed-31", label: "Primeiro aporte em renda fixa", done: false },
     ],
   },
   {
@@ -122,8 +122,8 @@ const initialPhases: Phase[] = [
     title: "O Império dos 36M",
     subtitle: "Patrimônio consolidado",
     tasks: [
-      { id: uid(), label: "Estrutura societária", done: false },
-      { id: uid(), label: "Carteira diversificada 36M", done: false },
+      { id: "seed-32", label: "Estrutura societária", done: false },
+      { id: "seed-33", label: "Carteira diversificada 36M", done: false },
     ],
   },
 ];
