@@ -217,9 +217,11 @@ function DiaD() {
           <div className="mt-5 space-y-4">
             {sim.alvos.map((a) => {
               const pct = a.saldo > 0 ? (a.abatido / a.saldo) * 100 : 100;
+              const original = originalDe(a.id);
+              const antecipado = original > a.saldo;
               return (
                 <div key={a.id}>
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between gap-2 text-sm">
                     <span className={a.extinto ? "text-liquidity" : ""}>
                       {a.credor}
                       {a.extinto && (
@@ -227,10 +229,31 @@ function DiaD() {
                           extinto
                         </span>
                       )}
+                      {antecipado && (
+                        <span className="ml-2 rounded-full border border-gold/40 bg-gold/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-gold">
+                          antecipado
+                        </span>
+                      )}
                     </span>
-                    <span className="num text-xs text-muted-foreground">
-                      {brl(a.abatido)} de {brl(a.saldo)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="num text-xs text-muted-foreground">
+                        {antecipado && (
+                          <span className="mr-1 line-through opacity-60">{brl(original)}</span>
+                        )}
+                        {brl(a.abatido)} de {brl(a.saldo)}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-6 px-2 text-[10px]"
+                        disabled={a.saldo <= 0}
+                        onClick={() =>
+                          setAlvoAmortizar({ id: String(a.id), nome: a.credor, saldo: a.saldo })
+                        }
+                      >
+                        Amortizar
+                      </Button>
+                    </div>
                   </div>
                   <Progress
                     value={pct}
@@ -247,6 +270,9 @@ function DiaD() {
           </div>
         </div>
       </div>
+
+      <AmortizarSheet alvo={alvoAmortizar} onClose={() => setAlvoAmortizar(null)} />
+
     </div>
   );
 }
