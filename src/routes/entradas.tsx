@@ -24,8 +24,6 @@ import {
 } from "@/components/ui/sheet";
 import {
   ENTRY_STATUSES,
-  ENTRY_TYPES,
-  ENTRY_VALUES,
   brl,
   planoDestinacao,
   useCockpit,
@@ -87,19 +85,36 @@ const statusTone: Record<EntryStatus, string> = {
 
 function Entradas() {
   const { clients, addClient, setClientStatus, removeClient, paidRevenue, pipeline } = useCockpit();
+  const { data: catalogo = [] } = useCrmReceitas();
+  const opcoes = [...catalogo].sort((a, b) => b.ticket_medio - a.ticket_medio);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [type, setType] = useState<EntryType>("Ritual 4.5k");
+  const [type, setType] = useState<EntryType>("");
   const [status, setStatus] = useState<EntryStatus>("Interessado");
   const [ritualDate, setRitualDate] = useState("");
   const [recebendo, setRecebendo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!type && opcoes.length > 0) setType(opcoes[0]!.produto);
+  }, [opcoes, type]);
 
   const submit = () => {
     if (!name.trim()) {
       toast.error("Informe o nome do cliente");
       return;
     }
-    addClient({ name: name.trim(), type, status, ritualDate: ritualDate || null });
+    const produto = opcoes.find((r) => r.produto === type);
+    if (!produto) {
+      toast.error("Escolha um ritual do catálogo");
+      return;
+    }
+    addClient({
+      name: name.trim(),
+      type: produto.produto,
+      valor: produto.ticket_medio,
+      status,
+      ritualDate: ritualDate || null,
+    });
     toast.success(`${name} adicionado ao pipeline`);
     setName("");
     setRitualDate("");
@@ -145,7 +160,7 @@ function Entradas() {
       <div className="grid gap-4 lg:grid-cols-3">
         {ENTRY_STATUSES.map((col, ci) => {
           const list = clients.filter((c) => c.status === col);
-          const total = list.reduce((s, c) => s + ENTRY_VALUES[c.type], 0);
+          const total = list.reduce((s, c) => s + c.valor, 0);
           return (
             <motion.div
               key={col}
@@ -181,7 +196,7 @@ function Entradas() {
                           {c.type}
                         </span>
                       </div>
-                      <span className="num text-sm">{brl(ENTRY_VALUES[c.type])}</span>
+                      <span className="num text-sm">{brl(c.valor)}</span>
                     </div>
                     {(c.ritualDate || c.paymentDate) && (
                       <p className="mt-2 text-[10px] text-muted-foreground">
@@ -237,9 +252,14 @@ function Entradas() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ENTRY_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t} — {brl(ENTRY_VALUES[t])}
+                  {opcoes.length === 0 && (
+                    <SelectItem value="__vazio" disabled>
+                      Cadastre um ritual no Catálogo de Receitas
+                    </SelectItem>
+                  )}
+                  {opcoes.map((r) => (
+                    <SelectItem key={r.id} value={r.produto}>
+                      {r.produto} — {brl(r.ticket_medio)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -735,11 +755,11 @@ function ReceberRitualSheet({ id, onClose }: { id: string | null; onClose: () =>
   const { data: receitas = [] } = useCrmReceitas();
 
   const cliente = clients.find((c) => c.id === id);
-  const ticket = cliente ? ENTRY_VALUES[cliente.type] : 0;
+  const produto = receitas.find((r) => r.produto === cliente?.type);
+  const ticket = cliente ? cliente.valor || (produto?.ticket_medio ?? 0) : 0;
   const fontes = ativos.filter((a) => !isReservaBlindada(a));
 
   const custoSugerido = (() => {
-    const produto = receitas.find((r) => r.ticket_medio === ticket);
     if (!produto || produto.meta_quantidade <= 0) return 0;
     return Math.round((produto.custo_operacao ?? 0) / produto.meta_quantidade);
   })();
