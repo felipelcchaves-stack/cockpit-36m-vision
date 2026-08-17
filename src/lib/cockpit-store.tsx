@@ -28,7 +28,10 @@ export type Client = {
   type: EntryType;
   status: EntryStatus;
   note?: string | undefined;
+  ritualDate?: string | null;
+  paymentDate?: string | null;
 };
+
 
 export type Creditor = {
   id: string;
