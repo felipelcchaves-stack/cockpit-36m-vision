@@ -529,9 +529,18 @@ function CrmReceitasReais() {
                 </td>
                 <td className="num py-3 text-right text-muted-foreground">{brl(r.ticket_medio)}</td>
                 <td className="num py-3 text-right text-muted-foreground">{r.meta_quantidade}x</td>
-                <td className="num py-3 text-right font-semibold text-liquidity">
-                  {brl(potencial(r))}
+                <td className="num py-3 text-right text-debt">
+                  {r.custo_operacao > 0 ? `-${brl(r.custo_operacao)}` : "—"}
                 </td>
+                <td className="num py-3 text-right font-semibold text-liquidity">
+                  {brl(potencialLiquido(r))}
+                  {r.custo_operacao > 0 && (
+                    <span className="block text-[10px] font-normal text-muted-foreground">
+                      bruto {brl(potencial(r))}
+                    </span>
+                  )}
+                </td>
+
                 <td className="py-3">
                   <div className="flex items-center justify-end gap-1">
                     <Button
