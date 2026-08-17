@@ -94,7 +94,7 @@ export function useMarcarPassivoPago() {
     mutationFn: async (id: number) => {
       const { error } = await supabase
         .from("passivos")
-        .update({ status: "Pago", saldo_devedor: 0 })
+        .update({ status: "Pago" })
         .eq("id", id);
       if (error) throw error;
     },
