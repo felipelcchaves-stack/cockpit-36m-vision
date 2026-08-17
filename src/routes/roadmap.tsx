@@ -237,6 +237,10 @@ function Roadmap() {
         </div>
       </div>
 
+      <PonteVirada />
+
+
+
       <div className="relative pl-8 sm:pl-12">
         <div className="absolute left-3 top-2 bottom-2 w-px bg-gradient-to-b from-liquidity via-gold to-border sm:left-5" />
         <div className="space-y-6">
