@@ -158,3 +158,64 @@ export function useMarcarPassivoPago() {
     },
   });
 }
+
+/* ---------------- Clientes do Kanban (crm_clientes) ---------------- */
+
+export type ClienteRow = {
+  id: string;
+  nome: string;
+  tipo: string;
+  status: string;
+  valor: number;
+  nota: string | null;
+};
+
+export const clientesQuery = queryOptions({
+  queryKey: ["crm_clientes"],
+  queryFn: async (): Promise<ClienteRow[]> => {
+    const { data, error } = await supabase
+      .from("crm_clientes")
+      .select("id, nome, tipo, status, valor, nota")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((r) => ({ ...r, valor: num(r.valor) }));
+  },
+});
+
+export const useClientes = () => useQuery(clientesQuery);
+
+const invalidateClientes = (qc: ReturnType<typeof useQueryClient>) =>
+  void qc.invalidateQueries({ queryKey: ["crm_clientes"] });
+
+export function useCriarCliente() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { nome: string; tipo: string; status: string; valor: number; nota?: string | null }) => {
+      const { error } = await supabase.from("crm_clientes").insert(input);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateClientes(qc),
+  });
+}
+
+export function useAtualizarStatusCliente() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from("crm_clientes").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateClientes(qc),
+  });
+}
+
+export function useRemoverCliente() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("crm_clientes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateClientes(qc),
+  });
+}
