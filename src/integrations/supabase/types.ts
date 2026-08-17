@@ -38,6 +38,8 @@ export type Database = {
       crm_clientes: {
         Row: {
           created_at: string
+          data_pagamento: string | null
+          data_ritual: string | null
           id: string
           nome: string
           nota: string | null
@@ -48,6 +50,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          data_pagamento?: string | null
+          data_ritual?: string | null
           id?: string
           nome: string
           nota?: string | null
@@ -58,6 +62,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          data_pagamento?: string | null
+          data_ritual?: string | null
           id?: string
           nome?: string
           nota?: string | null
@@ -70,6 +76,8 @@ export type Database = {
       }
       crm_receitas: {
         Row: {
+          data_pagamento_prevista: string | null
+          data_ritual: string | null
           id: number
           meta_quantidade: number
           produto: string
@@ -78,6 +86,8 @@ export type Database = {
           ticket_medio: number
         }
         Insert: {
+          data_pagamento_prevista?: string | null
+          data_ritual?: string | null
           id?: number
           meta_quantidade: number
           produto: string
@@ -86,6 +96,8 @@ export type Database = {
           ticket_medio: number
         }
         Update: {
+          data_pagamento_prevista?: string | null
+          data_ritual?: string | null
           id?: number
           meta_quantidade?: number
           produto?: string
@@ -118,6 +130,80 @@ export type Database = {
           status?: string | null
         }
         Relationships: []
+      }
+      roadmap_fases: {
+        Row: {
+          created_at: string
+          id: string
+          ordem: number
+          subtitulo: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          subtitulo?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          subtitulo?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      roadmap_tarefas: {
+        Row: {
+          concluida: boolean
+          concluida_em: string | null
+          created_at: string
+          descricao: string
+          fase_id: string
+          id: string
+          ordem: number
+          updated_at: string
+          valor_previsto: number
+          valor_realizado: number
+        }
+        Insert: {
+          concluida?: boolean
+          concluida_em?: string | null
+          created_at?: string
+          descricao: string
+          fase_id: string
+          id?: string
+          ordem?: number
+          updated_at?: string
+          valor_previsto?: number
+          valor_realizado?: number
+        }
+        Update: {
+          concluida?: boolean
+          concluida_em?: string | null
+          created_at?: string
+          descricao?: string
+          fase_id?: string
+          id?: string
+          ordem?: number
+          updated_at?: string
+          valor_previsto?: number
+          valor_realizado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_tarefas_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
+            referencedRelation: "roadmap_fases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

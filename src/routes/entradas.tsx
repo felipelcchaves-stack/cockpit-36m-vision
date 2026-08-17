@@ -32,6 +32,9 @@ import {
   type EntryType,
 } from "@/lib/cockpit-store";
 import {
+  dataBR,
+  diasAte,
+  prazoLabel,
   potencial,
   progresso,
   realizado,
@@ -80,15 +83,17 @@ function Entradas() {
   const [name, setName] = useState("");
   const [type, setType] = useState<EntryType>("Ritual 4.5k");
   const [status, setStatus] = useState<EntryStatus>("Interessado");
+  const [ritualDate, setRitualDate] = useState("");
 
   const submit = () => {
     if (!name.trim()) {
       toast.error("Informe o nome do cliente");
       return;
     }
-    addClient({ name: name.trim(), type, status });
+    addClient({ name: name.trim(), type, status, ritualDate: ritualDate || null });
     toast.success(`${name} adicionado ao pipeline`);
     setName("");
+    setRitualDate("");
     setOpen(false);
   };
 
@@ -165,6 +170,12 @@ function Entradas() {
                       </div>
                       <span className="num text-sm">{brl(ENTRY_VALUES[c.type])}</span>
                     </div>
+                    {(c.ritualDate || c.paymentDate) && (
+                      <p className="mt-2 text-[10px] text-muted-foreground">
+                        {c.ritualDate ? `Ritual ${dataBR(c.ritualDate)}` : "Sem data de ritual"}
+                        {c.paymentDate ? ` · Pago em ${dataBR(c.paymentDate)}` : ""}
+                      </p>
+                    )}
                     <div className="mt-3 flex items-center gap-2">
                       {c.status !== "Pago" && (
                         <Button
@@ -220,6 +231,15 @@ function Entradas() {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="dtritual">Data do ritual</Label>
+              <Input
+                id="dtritual"
+                type="date"
+                value={ritualDate}
+                onChange={(e) => setRitualDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
               <Label>Status</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as EntryStatus)}>
                 <SelectTrigger>
@@ -252,6 +272,8 @@ type ReceitaForm = {
   meta_quantidade: string;
   quantidade_realizada: string;
   status_campanha: string;
+  data_ritual: string;
+  data_pagamento_prevista: string;
 };
 
 const emptyForm: ReceitaForm = {
@@ -260,7 +282,10 @@ const emptyForm: ReceitaForm = {
   meta_quantidade: "",
   quantidade_realizada: "0",
   status_campanha: "Em Captação",
+  data_ritual: "",
+  data_pagamento_prevista: "",
 };
+
 
 function CrmReceitasReais() {
   const { data = [], isLoading, error } = useCrmReceitas();
@@ -291,6 +316,8 @@ function CrmReceitasReais() {
       meta_quantidade: String(r.meta_quantidade),
       quantidade_realizada: String(r.quantidade_realizada),
       status_campanha: r.status_campanha ?? "Em Captação",
+      data_ritual: r.data_ritual ?? "",
+      data_pagamento_prevista: r.data_pagamento_prevista ?? "",
     });
     setSheetOpen(true);
   };
@@ -306,7 +333,10 @@ function CrmReceitasReais() {
       meta_quantidade: Number(form.meta_quantidade) || 0,
       quantidade_realizada: Number(form.quantidade_realizada) || 0,
       status_campanha: form.status_campanha,
+      data_ritual: form.data_ritual || null,
+      data_pagamento_prevista: form.data_pagamento_prevista || null,
     };
+
     try {
       if (editId === null) {
         await criar.mutateAsync(payload);
@@ -384,11 +414,12 @@ function CrmReceitasReais() {
       {isLoading && <p className="mt-4 text-sm text-muted-foreground">Carregando receitas...</p>}
 
       <div className="mt-5 overflow-x-auto">
-        <table className="w-full min-w-[860px] text-sm">
+        <table className="w-full min-w-[1020px] text-sm">
           <thead>
             <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
               <th className="pb-3 font-medium">Produto</th>
               <th className="pb-3 font-medium">Status</th>
+              <th className="pb-3 font-medium">Datas</th>
               <th className="pb-3 font-medium">Progresso</th>
               <th className="pb-3 text-right font-medium">Ticket médio</th>
               <th className="pb-3 text-right font-medium">Meta</th>
@@ -405,6 +436,10 @@ function CrmReceitasReais() {
                     {r.status_campanha ?? "—"}
                   </span>
                 </td>
+                <td className="min-w-[190px] py-3">
+                  <PrazoCell ritual={r.data_ritual} pagamento={r.data_pagamento_prevista} />
+                </td>
+
                 <td className="min-w-[210px] py-3">
                   <div className="flex items-center gap-2">
                     <Button
@@ -513,6 +548,27 @@ function CrmReceitasReais() {
                 onChange={(e) => setForm({ ...form, quantidade_realizada: e.target.value })}
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="dr">Data do ritual</Label>
+                <Input
+                  id="dr"
+                  type="date"
+                  value={form.data_ritual}
+                  onChange={(e) => setForm({ ...form, data_ritual: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dp">Pagamento previsto</Label>
+                <Input
+                  id="dp"
+                  type="date"
+                  value={form.data_pagamento_prevista}
+                  onChange={(e) => setForm({ ...form, data_pagamento_prevista: e.target.value })}
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>Status da campanha</Label>
               <Select
@@ -557,5 +613,25 @@ function CrmReceitasReais() {
         </AlertDialogContent>
       </AlertDialog>
     </motion.section>
+  );
+}
+
+function PrazoCell({ ritual, pagamento }: { ritual: string | null; pagamento: string | null }) {
+  const dias = diasAte(pagamento);
+  const label = prazoLabel(pagamento);
+  const tone =
+    dias === null
+      ? "text-muted-foreground"
+      : dias < 0
+        ? "text-debt"
+        : dias <= 7
+          ? "text-gold"
+          : "text-liquidity";
+  return (
+    <div className="text-[11px] leading-tight">
+      <p className="text-muted-foreground">Ritual: {dataBR(ritual)}</p>
+      <p className="text-muted-foreground">Pgto: {dataBR(pagamento)}</p>
+      {label && <p className={`mt-0.5 font-medium ${tone}`}>{label}</p>}
+    </div>
   );
 }

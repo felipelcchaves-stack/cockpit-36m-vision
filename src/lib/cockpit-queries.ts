@@ -24,6 +24,8 @@ export type CrmReceita = {
   meta_quantidade: number;
   quantidade_realizada: number;
   status_campanha: string | null;
+  data_ritual: string | null;
+  data_pagamento_prevista: string | null;
 };
 
 export type CrmReceitaInput = {
@@ -32,7 +34,10 @@ export type CrmReceitaInput = {
   meta_quantidade: number;
   quantidade_realizada: number;
   status_campanha: string | null;
+  data_ritual: string | null;
+  data_pagamento_prevista: string | null;
 };
+
 
 const num = (v: unknown) => Number(v ?? 0);
 
@@ -65,7 +70,9 @@ export const crmReceitasQuery = queryOptions({
   queryFn: async (): Promise<CrmReceita[]> => {
     const { data, error } = await supabase
       .from("crm_receitas")
-      .select("id, produto, ticket_medio, meta_quantidade, quantidade_realizada, status_campanha")
+      .select(
+        "id, produto, ticket_medio, meta_quantidade, quantidade_realizada, status_campanha, data_ritual, data_pagamento_prevista",
+      )
       .order("id");
     if (error) throw error;
     return (data ?? []).map((r) => ({
@@ -168,6 +175,8 @@ export type ClienteRow = {
   status: string;
   valor: number;
   nota: string | null;
+  data_ritual: string | null;
+  data_pagamento: string | null;
 };
 
 export const clientesQuery = queryOptions({
@@ -175,7 +184,7 @@ export const clientesQuery = queryOptions({
   queryFn: async (): Promise<ClienteRow[]> => {
     const { data, error } = await supabase
       .from("crm_clientes")
-      .select("id, nome, tipo, status, valor, nota")
+      .select("id, nome, tipo, status, valor, nota, data_ritual, data_pagamento")
       .order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map((r) => ({ ...r, valor: num(r.valor) }));
@@ -190,8 +199,35 @@ const invalidateClientes = (qc: ReturnType<typeof useQueryClient>) =>
 export function useCriarCliente() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { nome: string; tipo: string; status: string; valor: number; nota?: string | null }) => {
+    mutationFn: async (input: {
+      nome: string;
+      tipo: string;
+      status: string;
+      valor: number;
+      nota?: string | null;
+      data_ritual?: string | null;
+      data_pagamento?: string | null;
+    }) => {
       const { error } = await supabase.from("crm_clientes").insert(input);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateClientes(qc),
+  });
+}
+
+export function useAtualizarCliente() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...input
+    }: {
+      id: string;
+      status?: string;
+      data_ritual?: string | null;
+      data_pagamento?: string | null;
+    }) => {
+      const { error } = await supabase.from("crm_clientes").update(input).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => invalidateClientes(qc),
@@ -202,7 +238,9 @@ export function useAtualizarStatusCliente() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("crm_clientes").update({ status }).eq("id", id);
+      const patch: { status: string; data_pagamento?: string } = { status };
+      if (status === "Pago") patch.data_pagamento = new Date().toISOString().slice(0, 10);
+      const { error } = await supabase.from("crm_clientes").update(patch).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => invalidateClientes(qc),
@@ -219,3 +257,122 @@ export function useRemoverCliente() {
     onSuccess: () => invalidateClientes(qc),
   });
 }
+
+/* ---------------- Roadmap Dia D (roadmap_fases / roadmap_tarefas) ---------------- */
+
+export type RoadmapTarefa = {
+  id: string;
+  fase_id: string;
+  descricao: string;
+  ordem: number;
+  concluida: boolean;
+  concluida_em: string | null;
+  valor_previsto: number;
+  valor_realizado: number;
+};
+
+export type RoadmapFase = {
+  id: string;
+  titulo: string;
+  subtitulo: string | null;
+  ordem: number;
+  tarefas: RoadmapTarefa[];
+};
+
+export const roadmapQuery = queryOptions({
+  queryKey: ["roadmap"],
+  queryFn: async (): Promise<RoadmapFase[]> => {
+    const [fases, tarefas] = await Promise.all([
+      supabase.from("roadmap_fases").select("id, titulo, subtitulo, ordem").order("ordem"),
+      supabase
+        .from("roadmap_tarefas")
+        .select("id, fase_id, descricao, ordem, concluida, concluida_em, valor_previsto, valor_realizado")
+        .order("ordem"),
+    ]);
+    if (fases.error) throw fases.error;
+    if (tarefas.error) throw tarefas.error;
+    const rows = (tarefas.data ?? []).map((t) => ({
+      ...t,
+      valor_previsto: num(t.valor_previsto),
+      valor_realizado: num(t.valor_realizado),
+    }));
+    return (fases.data ?? []).map((f) => ({
+      ...f,
+      tarefas: rows.filter((t) => t.fase_id === f.id),
+    }));
+  },
+});
+
+export const useRoadmap = () => useQuery(roadmapQuery);
+
+const invalidateRoadmap = (qc: ReturnType<typeof useQueryClient>) =>
+  void qc.invalidateQueries({ queryKey: ["roadmap"] });
+
+export type TarefaInput = {
+  descricao: string;
+  valor_previsto: number;
+  valor_realizado: number;
+};
+
+export function useCriarTarefa() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: TarefaInput & { fase_id: string; ordem: number }) => {
+      const { error } = await supabase.from("roadmap_tarefas").insert(input);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoadmap(qc),
+  });
+}
+
+export function useAtualizarTarefa() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...input
+    }: Partial<TarefaInput> & { id: string; concluida?: boolean; concluida_em?: string | null }) => {
+      const { error } = await supabase.from("roadmap_tarefas").update(input).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoadmap(qc),
+  });
+}
+
+export function useRemoverTarefa() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("roadmap_tarefas").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoadmap(qc),
+  });
+}
+
+export const previstoFase = (f: RoadmapFase) =>
+  f.tarefas.reduce((s, t) => s + t.valor_previsto, 0);
+export const realizadoFase = (f: RoadmapFase) =>
+  f.tarefas.reduce((s, t) => s + t.valor_realizado, 0);
+
+/* ---------------- Helpers de datas ---------------- */
+
+export const diasAte = (iso: string | null) => {
+  if (!iso) return null;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const alvo = new Date(`${iso}T00:00:00`);
+  return Math.round((alvo.getTime() - hoje.getTime()) / 86400000);
+};
+
+export const prazoLabel = (iso: string | null) => {
+  const d = diasAte(iso);
+  if (d === null) return null;
+  if (d === 0) return "hoje";
+  if (d > 0) return `faltam ${d} ${d === 1 ? "dia" : "dias"}`;
+  return `atrasado há ${-d} ${-d === 1 ? "dia" : "dias"}`;
+};
+
+export const dataBR = (iso: string | null) =>
+  iso ? new Date(`${iso}T00:00:00`).toLocaleDateString("pt-BR") : "—";
+
