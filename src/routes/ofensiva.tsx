@@ -65,8 +65,10 @@ function Ofensiva() {
   const { data: passivos = [] } = usePassivos();
   const { data: ativos = [] } = useAtivos();
   const { data: receitas = [] } = useCrmReceitas();
+  const { data: transacoes = [] } = useTransacoes();
 
   const [cenario, setCenario] = useState<Cenario>("provavel");
+  const [alvoAmortizar, setAlvoAmortizar] = useState<AlvoAmortizacao | null>(null);
 
   const liquidoCliente = (valor: number, tipo: string) => {
     const produto = receitas.find((r) => r.produto === tipo);
@@ -86,15 +88,35 @@ function Ofensiva() {
   const pipeline =
     cenario === "realizado" ? 0 : cenario === "provavel" ? confirmados : confirmados + interessados;
 
+  // Tudo que já morreu antes do Dia D — de rituais, do caixa, do CDB ou de fora.
+  const ex = useMemo(
+    () => exterminioRealizado({ passivos, transacoes }),
+    [passivos, transacoes],
+  );
+
   const c = useMemo(
-    () => cascataFase1DiaD({ passivos, ativos, municao: pipeline, municaoRealizada: pagos }),
-    [passivos, ativos, pipeline, pagos],
+    () =>
+      cascataFase1DiaD({
+        passivos,
+        ativos,
+        municao: pipeline,
+        municaoRealizada: pagos,
+        originais: ex.originais,
+      }),
+    [passivos, ativos, pipeline, pagos, ex.originais],
   );
 
   const alvoTotal = c.abates.reduce((s, a) => s + a.saldo, 0) + c.jaExterminado;
   const pctFase1 = alvoTotal > 0 ? Math.min(100, ((alvoTotal - c.faltaVender) / alvoTotal) * 100) : 100;
   const rendaSobra = c.sobraLivre * RETIRADA_SEGURA;
   const pctMeta = Math.max(0, (c.sobraLivre / META_PATRIMONIO) * 100);
+
+  // Kill List na ordem oficial, com o estado real de cada alvo.
+  const killListViva = killList(passivos).map((p) => ({
+    passivo: p,
+    abate: ex.alvos.find((a) => a.id === p.id),
+  }));
+
 
   const sugestoes = receitas
     .filter((r) => r.ticket_medio > 0)
