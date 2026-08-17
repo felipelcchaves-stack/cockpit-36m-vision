@@ -246,7 +246,7 @@ export function PainelLastro({ ativo }: { ativo: Ativo | undefined }) {
           </ResponsiveContainer>
         ) : (
           <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">
-            A curva aparece a partir do primeiro fechamento diário. Use "Render agora" para começar.
+            A curva aparece a partir do primeiro saldo conferido. Use "Atualizar saldo" para começar.
           </div>
         )}
       </div>
