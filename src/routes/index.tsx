@@ -52,6 +52,7 @@ import {
   META_PATRIMONIO,
   RENDA_PASSIVA_ALVO,
   alertaCartao,
+  cascataFase1DiaD,
   cofreBlindado,
   cruzamentoMeta,
   projetar36M,
