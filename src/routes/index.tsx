@@ -90,6 +90,7 @@ function Dashboard() {
   const { data: receitas = [] } = useCrmReceitas();
   const { data: parametros } = useParametros();
   const { data: aportes = [] } = useAportes();
+  const { data: transacoesRows = [] } = useTransacoes();
 
   const totalDebt = sumPassivos(passivosRows);
   const liquidity = sumPoderDeFogo(ativosRows);
