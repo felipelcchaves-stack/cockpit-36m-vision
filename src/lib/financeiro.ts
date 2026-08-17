@@ -244,7 +244,7 @@ export function cascataFase1DiaD(args: {
     sim,
     reserva: cofreBlindado(ativos),
     sobraLivre: sim.sobra,
-    passivoRestante: sim.passivoRestante + faltaVender,
+    passivoRestante: sim.passivoRestante,
   };
 }
 
