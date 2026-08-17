@@ -233,6 +233,48 @@ function Dashboard() {
         ))}
       </div>
 
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.16 }}
+        className={`rounded-2xl border p-5 ${
+          cascata.faltaVender > 0
+            ? "border-debt/40 bg-debt/[0.07]"
+            : "border-liquidity/40 bg-liquidity/[0.07]"
+        }`}
+      >
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Falta vender para o Dia D (cenário provável)
+            </p>
+            <p
+              className={`num mt-1 text-2xl font-semibold ${
+                cascata.faltaVender > 0 ? "text-debt" : "text-liquidity"
+              }`}
+            >
+              {cascata.faltaVender > 0
+                ? brl(cascata.faltaVender)
+                : "Agiota e Oluwo cobertos"}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Contando {brl(confirmadosLiquido)} de rituais confirmados no Kanban.
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Sobra livre projetada no Dia D
+            </p>
+            <p className="num mt-1 text-2xl font-semibold gold-text">{brl(cascata.sobraLivre)}</p>
+            <Link to="/ofensiva" className="text-[11px] text-gold underline underline-offset-4">
+              Ver a cascata completa
+            </Link>
+          </div>
+        </div>
+      </motion.div>
+
+
+
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <motion.div
           initial={{ opacity: 0, y: 14 }}
