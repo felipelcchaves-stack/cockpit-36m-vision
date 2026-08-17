@@ -111,21 +111,26 @@ function Dashboard() {
 
 
   // Ofensiva → Dia D: munição provável (clientes confirmados, líquida de custo)
+  const custoUnitDe = (tipo: string) => {
+    const produto = receitas.find((r) => r.produto === tipo);
+    return produto && produto.meta_quantidade > 0
+      ? (produto.custo_operacao ?? 0) / produto.meta_quantidade
+      : 0;
+  };
+  const liquidoCli = (valor: number, tipo: string) => Math.max(0, valor - custoUnitDe(tipo));
   const confirmadosLiquido = clients
     .filter((c) => c.status === "Confirmado")
-    .reduce((s, c) => {
-      const produto = receitas.find((r) => r.produto === c.type);
-      const custoUnit =
-        produto && produto.meta_quantidade > 0
-          ? (produto.custo_operacao ?? 0) / produto.meta_quantidade
-          : 0;
-      return s + Math.max(0, c.valor - custoUnit);
-    }, 0);
+    .reduce((s, c) => s + liquidoCli(c.valor, c.type), 0);
+  const pagosLiquido = clients
+    .filter((c) => c.status === "Pago")
+    .reduce((s, c) => s + liquidoCli(c.valor, c.type), 0);
   const cascata = cascataFase1DiaD({
     passivos: passivosRows,
     ativos: ativosRows,
     municao: confirmadosLiquido,
+    municaoRealizada: pagosLiquido,
   });
+
 
   const paidCreditors = creditors.filter((c) => c.balance === 0).length;
   const nextTarget = [...creditors].filter((c) => c.balance > 0).sort((a, b) => a.balance - b.balance)[0];

@@ -7,12 +7,12 @@ import { PageHeader } from "@/components/page-header";
 import { Progress } from "@/components/ui/progress";
 import { brl, useCockpit } from "@/lib/cockpit-store";
 import {
-  realizadoLiquido,
   useAtivos,
   useCrmReceitas,
   usePassivos,
   type CrmReceita,
 } from "@/lib/cockpit-queries";
+
 import {
   META_PATRIMONIO,
   RENDA_PASSIVA_ALVO,
@@ -67,23 +67,25 @@ function Ofensiva() {
     return Math.max(0, valor - custoUnitario(produto));
   };
 
+  const clientesPagos = clients.filter((c) => c.status === "Pago");
+  const pagos = clientesPagos.reduce((s, c) => s + liquidoCliente(c.valor, c.type), 0);
   const confirmados = clients
     .filter((c) => c.status === "Confirmado")
     .reduce((s, c) => s + liquidoCliente(c.valor, c.type), 0);
   const interessados = clients
     .filter((c) => c.status === "Interessado")
     .reduce((s, c) => s + liquidoCliente(c.valor, c.type), 0);
-  const jaCapturado = receitas.reduce((s, r) => s + realizadoLiquido(r), 0);
 
-  const municao =
+  // Cenários cumulativos: o realizado sempre conta; o pipeline entra por cima.
+  const pipeline =
     cenario === "realizado" ? 0 : cenario === "provavel" ? confirmados : confirmados + interessados;
 
   const c = useMemo(
-    () => cascataFase1DiaD({ passivos, ativos, municao }),
-    [passivos, ativos, municao],
+    () => cascataFase1DiaD({ passivos, ativos, municao: pipeline, municaoRealizada: pagos }),
+    [passivos, ativos, pipeline, pagos],
   );
 
-  const alvoTotal = c.abates.reduce((s, a) => s + a.saldo, 0);
+  const alvoTotal = c.abates.reduce((s, a) => s + a.saldo, 0) + c.jaExterminado;
   const pctFase1 = alvoTotal > 0 ? Math.min(100, ((alvoTotal - c.faltaVender) / alvoTotal) * 100) : 100;
   const rendaSobra = c.sobraLivre * RETIRADA_SEGURA;
   const pctMeta = Math.max(0, (c.sobraLivre / META_PATRIMONIO) * 100);
@@ -94,6 +96,7 @@ function Ofensiva() {
       produto: r.produto,
       qtd: Math.ceil(c.faltaVender / Math.max(1, r.ticket_medio - custoUnitario(r))),
     }));
+
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -152,6 +155,44 @@ function Ofensiva() {
         />
       </motion.div>
 
+      {/* Já capturado: rituais efetivamente pagos */}
+      <div className="glass-card rounded-2xl p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Já capturado (rituais pagos)</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Dinheiro que já entrou e já baixou o saldo de Agiota/Oluwo — por isso não aparece mais
+              como abatimento a fazer.
+            </p>
+          </div>
+          <p className="num text-2xl font-semibold text-liquidity">{brlExato(pagos)}</p>
+        </div>
+        {clientesPagos.length > 0 ? (
+          <ul className="mt-4 divide-y divide-border/60">
+            {clientesPagos.map((cl) => (
+              <li key={cl.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span className="min-w-0">
+                  <span className="block truncate">{cl.name}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
+                    {cl.type}
+                    {cl.paymentDate ? ` · pago em ${cl.paymentDate.split("-").reverse().join("/")}` : ""}
+                  </span>
+                </span>
+                <span className="num shrink-0 text-liquidity">
+                  {brlExato(liquidoCliente(cl.valor, cl.type))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Nenhum ritual marcado como Pago ainda.
+          </p>
+        )}
+      </div>
+
+
+
       {/* Degraus da cascata */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
@@ -159,7 +200,7 @@ function Ofensiva() {
             n: "1",
             label: "Munição da Fase 1",
             value: brlExato(c.municao),
-            hint: `Já capturado no catálogo: ${brl(jaCapturado)} · confirmados ${brl(confirmados)} · interessados ${brl(interessados)}`,
+            hint: `Já pago ${brl(pagos)} · confirmados ${brl(confirmados)} · interessados ${brl(interessados)}`,
             icon: Crosshair,
             tone: "text-liquidity",
           },
