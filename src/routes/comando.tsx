@@ -1,12 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Bot, Send, User } from "lucide-react";
+import { Bot, Loader2, Send, User } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { APORTE_PREVISTO, brl, useCockpit } from "@/lib/cockpit-store";
+import { brl, useCockpit } from "@/lib/cockpit-store";
+import { perguntarCfo } from "@/lib/cfo.functions";
+import { killList, sumPassivos, usePassivos } from "@/lib/cockpit-queries";
+import { APORTE_DIA_D, LASTRO_INVESTIMENTO, QUITACAO_CONSIGNADO } from "@/lib/financeiro";
 
 export const Route = createFileRoute("/comando")({
   head: () => ({
@@ -26,14 +30,17 @@ export const Route = createFileRoute("/comando")({
 type Msg = { id: number; role: "user" | "cfo"; text: string };
 
 const suggestions = [
-  "Como alocar o aporte do Dia D?",
+  "Como alocar a Bazuca no Dia D?",
   "Qual passivo devo atacar primeiro?",
   "Recalcule minha rota para os 36M",
   "Quantos rituais faltam este mês?",
 ];
 
 function Comando() {
-  const { liquidity, totalDebt, creditors, pipeline, freeSurplus, progress } = useCockpit();
+  const { liquidity, pipeline, freeSurplus, progress, clients } = useCockpit();
+  const { data: passivos = [] } = usePassivos();
+  const enviar = useServerFn(perguntarCfo);
+
   const [messages, setMessages] = useState<Msg[]>([
     {
       id: 1,
@@ -42,39 +49,51 @@ function Comando() {
     },
   ]);
   const [input, setInput] = useState("");
+  const [pensando, setPensando] = useState(false);
   const idRef = useRef(2);
 
-  const answer = (q: string) => {
-    const lower = q.toLowerCase();
-    const alvos = [...creditors].filter((c) => c.balance > 0).sort((a, b) => b.balance - a.balance);
-    const maior = alvos[0];
-    const menor = alvos[alvos.length - 1];
+  const totalDebt = sumPassivos(passivos);
+  const alvos = killList(passivos).filter((p) => p.saldo_devedor > 0);
 
-    if (lower.includes("alocar") || lower.includes("aporte")) {
-      return `Com ${brl(APORTE_PREVISTO)} de aporte e ${brl(liquidity)} de liquidez, minha recomendação: 60% (${brl(APORTE_PREVISTO * 0.6)}) para abater ${maior?.name ?? "o maior passivo"}, 25% (${brl(APORTE_PREVISTO * 0.25)}) em reserva de liquidez operacional e 15% (${brl(APORTE_PREVISTO * 0.15)}) no primeiro bloco de renda fixa — o embrião dos 36M.`;
-    }
-    if (lower.includes("passivo") || lower.includes("dívida") || lower.includes("primeiro")) {
-      return `Ataque ${menor?.name ?? "o menor saldo"} (${brl(menor?.balance ?? 0)}) para gerar vitória psicológica rápida, e em paralelo negocie ${maior?.name ?? ""} (${brl(maior?.balance ?? 0)}), que concentra o maior custo. Passivo total hoje: ${brl(totalDebt)}.`;
-    }
-    if (lower.includes("recalcul") || lower.includes("rota") || lower.includes("36m")) {
-      return `Você está em ${progress.toFixed(2)}% da meta de 36M. Sobra livre projetada: ${brl(freeSurplus)}. Mantendo o ritmo atual de captação e reinvestindo 70% da sobra, a rota se sustenta — o gargalo não é receita, é a velocidade de extinção dos passivos.`;
-    }
-    if (lower.includes("ritual") || lower.includes("cliente") || lower.includes("receita")) {
-      return `Seu pipeline não pago vale ${brl(pipeline)}. Convertendo 60% dele você cobre ${(((pipeline * 0.6) / (totalDebt || 1)) * 100).toFixed(1)}% do passivo restante. Priorize os Oye 30k: melhor retorno por hora de operação.`;
-    }
-    return `Analisando: liquidez ${brl(liquidity)}, passivos ${brl(totalDebt)}, pipeline ${brl(pipeline)}. Em resumo — não aumente estrutura antes de zerar ${menor?.name ?? "os passivos menores"}. Disciplina agora, escala depois.`;
-  };
+  const contexto = [
+    `Poder de fogo: ${brl(liquidity)}`,
+    `Passivo total em aberto: ${brl(totalDebt)}`,
+    `Sobra livre projetada: ${brl(freeSurplus)}`,
+    `Pipeline não pago: ${brl(pipeline)}`,
+    `Progresso rumo aos 36M: ${progress.toFixed(2)}%`,
+    `Clientes no CRM: ${clients.length}`,
+    `Dia D — aporte ${brl(APORTE_DIA_D)}, consignado ${brl(QUITACAO_CONSIGNADO)}, lastro ${brl(LASTRO_INVESTIMENTO)}`,
+    "Kill List (ordem oficial, saldo atual):",
+    ...alvos.map((a, i) => `${i + 1}. ${a.credor} — ${brl(a.saldo_devedor)} (${a.fase_quitacao ?? "sem fase"})`),
+  ].join("\n");
 
-  const send = (text?: string) => {
+  const send = async (text?: string) => {
     const q = (text ?? input).trim();
-    if (!q) return;
-    const userMsg: Msg = { id: idRef.current++, role: "user", text: q };
-    setMessages((m) => [...m, userMsg]);
+    if (!q || pensando) return;
+    const historico = messages
+      .slice(-8)
+      .map((m) => ({ role: m.role === "cfo" ? ("assistant" as const) : ("user" as const), content: m.text }));
+
+    setMessages((m) => [...m, { id: idRef.current++, role: "user", text: q }]);
     setInput("");
-    setTimeout(() => {
-      setMessages((m) => [...m, { id: idRef.current++, role: "cfo", text: answer(q) }]);
-    }, 450);
+    setPensando(true);
+    try {
+      const res = await enviar({ data: { pergunta: q, contexto, historico } });
+      setMessages((m) => [...m, { id: idRef.current++, role: "cfo", text: res.texto }]);
+    } catch {
+      setMessages((m) => [
+        ...m,
+        {
+          id: idRef.current++,
+          role: "cfo",
+          text: `Perdi o link com a central de inteligência. Enquanto isso, o número que importa: ${brl(totalDebt)} de passivo vivo e ${alvos[0]?.credor ?? "nenhum alvo"} no topo da Kill List.`,
+        },
+      ]);
+    } finally {
+      setPensando(false);
+    }
   };
+
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col gap-5 p-4 sm:p-6 lg:p-8">
