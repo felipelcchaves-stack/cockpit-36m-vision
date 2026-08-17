@@ -12,7 +12,14 @@ import {
 import { ArrowDownRight, ArrowUpRight, Flame, Sparkles, Target, Wallet } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
-import { APORTE_PREVISTO, brl, useCockpit } from "@/lib/cockpit-store";
+import { brl, useCockpit } from "@/lib/cockpit-store";
+import {
+  isPago,
+  sumPassivos,
+  sumPoderDeFogo,
+  useAtivos,
+  usePassivos,
+} from "@/lib/cockpit-queries";
 import { Progress } from "@/components/ui/progress";
 
 export const Route = createFileRoute("/")({
