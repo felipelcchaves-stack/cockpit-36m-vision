@@ -45,6 +45,7 @@ import {
   useParametros,
   usePassivos,
   useSalvarAporte,
+  useTransacoes,
 } from "@/lib/cockpit-queries";
 import {
   APORTE_MENSAL,
@@ -55,6 +56,7 @@ import {
   cascataFase1DiaD,
   cofreBlindado,
   cruzamentoMeta,
+  exterminioRealizado,
   projetar36M,
   rendaPassivaAtual,
 } from "@/lib/financeiro";
