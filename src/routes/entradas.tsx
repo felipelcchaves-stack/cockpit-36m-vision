@@ -528,6 +528,27 @@ function CrmReceitasReais() {
                 onChange={(e) => setForm({ ...form, quantidade_realizada: e.target.value })}
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="dr">Data do ritual</Label>
+                <Input
+                  id="dr"
+                  type="date"
+                  value={form.data_ritual}
+                  onChange={(e) => setForm({ ...form, data_ritual: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dp">Pagamento previsto</Label>
+                <Input
+                  id="dp"
+                  type="date"
+                  value={form.data_pagamento_prevista}
+                  onChange={(e) => setForm({ ...form, data_pagamento_prevista: e.target.value })}
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>Status da campanha</Label>
               <Select
