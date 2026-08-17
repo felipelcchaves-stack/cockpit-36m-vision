@@ -31,7 +31,27 @@ import {
   type EntryStatus,
   type EntryType,
 } from "@/lib/cockpit-store";
-import { potencial, useCrmReceitas } from "@/lib/cockpit-queries";
+import {
+  potencial,
+  progresso,
+  realizado,
+  useAtualizarReceita,
+  useCriarReceita,
+  useCrmReceitas,
+  useRemoverReceita,
+  type CrmReceita,
+} from "@/lib/cockpit-queries";
+import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/entradas")({
   head: () => ({
