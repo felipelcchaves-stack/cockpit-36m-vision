@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedComandoRouteImport } from './routes/_authenticated/comando'
 import { Route as AuthenticatedDiaDRouteImport } from './routes/_authenticated/dia-d'
@@ -21,6 +22,11 @@ import { Route as AuthenticatedRoadmapRouteImport } from './routes/_authenticate
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -66,6 +72,7 @@ const AuthenticatedRoadmapRoute = AuthenticatedRoadmapRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/auth': typeof AuthRoute
   '/comando': typeof AuthenticatedComandoRoute
   '/dia-d': typeof AuthenticatedDiaDRoute
   '/entradas': typeof AuthenticatedEntradasRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/roadmap': typeof AuthenticatedRoadmapRoute
 }
 export interface FileRoutesByTo {
+  '/auth': typeof AuthRoute
   '/comando': typeof AuthenticatedComandoRoute
   '/dia-d': typeof AuthenticatedDiaDRoute
   '/entradas': typeof AuthenticatedEntradasRoute
@@ -87,6 +95,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
   '/_authenticated/comando': typeof AuthenticatedComandoRoute
   '/_authenticated/dia-d': typeof AuthenticatedDiaDRoute
   '/_authenticated/entradas': typeof AuthenticatedEntradasRoute
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/comando'
     | '/dia-d'
     | '/entradas'
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/roadmap'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/auth'
     | '/comando'
     | '/dia-d'
     | '/entradas'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_authenticated'
+    | '/auth'
     | '/_authenticated/comando'
     | '/_authenticated/dia-d'
     | '/_authenticated/entradas'
@@ -132,6 +144,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -141,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -229,6 +249,7 @@ const AuthenticatedRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
