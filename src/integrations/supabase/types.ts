@@ -35,6 +35,39 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_clientes: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          nota: string | null
+          status: string
+          tipo: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          nota?: string | null
+          status?: string
+          tipo: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          nota?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       crm_receitas: {
         Row: {
           id: number
