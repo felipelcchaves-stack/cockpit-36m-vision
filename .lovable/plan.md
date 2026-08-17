@@ -40,5 +40,6 @@ O que falta, e entra no plano: **poder lançar sem sair da Ofensiva**. Cada cred
 
 - `src/lib/financeiro.ts`: nova função `exterminioRealizado({ passivos, transacoes, clientesPagos })` que reconstrói o saldo original por credor a partir de `transacoes.passivo_id` e devolve abatido/original/restante por alvo; `cascataFase1DiaD` passa a receber esse resumo e a expor `ganhoAntecipacao` (sobra livre atual − sobra do baseline do dossiê).
 - `src/lib/cockpit-queries.ts`: hook/seletor de transações agrupadas por `passivo_id` (dados já existem na tabela `transacoes`).
-- `src/routes/ofensiva.tsx`: novo bloco Kill List, bloco de extermínio consolidado e o contador de impacto no cabeçalho.
+- `src/routes/ofensiva.tsx`: novo bloco Kill List, bloco de extermínio consolidado, contador de impacto no cabeçalho e o Side Sheet de amortização reaproveitado.
+- Sheet de amortização extraído de `src/routes/passivos.tsx` para um componente compartilhado (`src/components/amortizar-sheet.tsx`), sem mudar o comportamento atual na tela de Passivos; ganha campo de data do pagamento.
 - Sem migração de banco — usa `passivos`, `transacoes` e `crm_clientes` já existentes.
