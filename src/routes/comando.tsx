@@ -20,7 +20,7 @@ export const Route = createFileRoute("/comando")({
       { property: "og:description", content: "Seu CFO virtual, disponível 24/7." },
     ],
   }),
-  component: Comando;
+  component: Comando,
 });
 
 type Msg = { id: number; role: "user" | "cfo"; text: string };
