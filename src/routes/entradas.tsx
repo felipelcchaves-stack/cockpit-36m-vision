@@ -411,12 +411,15 @@ function CrmReceitasReais() {
             {data.map((r) => (
               <tr key={r.id} className="border-t border-border/60">
                 <td className="py-3 font-medium">{r.produto}</td>
-
                 <td className="py-3">
                   <span className="rounded-full border border-gold/30 bg-gold/10 px-2.5 py-1 text-[11px] text-gold">
                     {r.status_campanha ?? "—"}
                   </span>
                 </td>
+                <td className="min-w-[190px] py-3">
+                  <PrazoCell ritual={r.data_ritual} pagamento={r.data_pagamento_prevista} />
+                </td>
+
                 <td className="min-w-[210px] py-3">
                   <div className="flex items-center gap-2">
                     <Button
