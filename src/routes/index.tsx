@@ -124,11 +124,13 @@ function Dashboard() {
   const pagosLiquido = clients
     .filter((c) => c.status === "Pago")
     .reduce((s, c) => s + liquidoCli(c.valor, c.type), 0);
+  const exDash = exterminioRealizado({ passivos: passivosRows, transacoes: transacoesRows });
   const cascata = cascataFase1DiaD({
     passivos: passivosRows,
     ativos: ativosRows,
     municao: confirmadosLiquido,
     municaoRealizada: pagosLiquido,
+    originais: exDash.originais,
   });
 
 
