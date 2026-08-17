@@ -83,7 +83,7 @@ export const crmReceitasQuery = queryOptions({
     const { data, error } = await supabase
       .from("crm_receitas")
       .select(
-        "id, produto, ticket_medio, meta_quantidade, quantidade_realizada, status_campanha, data_ritual, data_pagamento_prevista",
+        "id, produto, ticket_medio, meta_quantidade, quantidade_realizada, custo_operacao, status_campanha, data_ritual, data_pagamento_prevista",
       )
       .order("id");
     if (error) throw error;
@@ -92,9 +92,11 @@ export const crmReceitasQuery = queryOptions({
       ticket_medio: num(r.ticket_medio),
       meta_quantidade: num(r.meta_quantidade),
       quantidade_realizada: num((r as { quantidade_realizada?: number }).quantidade_realizada),
+      custo_operacao: num((r as { custo_operacao?: number }).custo_operacao),
     }));
   },
 });
+
 
 export const usePassivos = () => useQuery(passivosQuery);
 export const useAtivos = () => useQuery(ativosQuery);
