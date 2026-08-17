@@ -296,6 +296,8 @@ function CrmReceitasReais() {
       meta_quantidade: String(r.meta_quantidade),
       quantidade_realizada: String(r.quantidade_realizada),
       status_campanha: r.status_campanha ?? "Em Captação",
+      data_ritual: r.data_ritual ?? "",
+      data_pagamento_prevista: r.data_pagamento_prevista ?? "",
     });
     setSheetOpen(true);
   };
@@ -311,7 +313,10 @@ function CrmReceitasReais() {
       meta_quantidade: Number(form.meta_quantidade) || 0,
       quantidade_realizada: Number(form.quantidade_realizada) || 0,
       status_campanha: form.status_campanha,
+      data_ritual: form.data_ritual || null,
+      data_pagamento_prevista: form.data_pagamento_prevista || null,
     };
+
     try {
       if (editId === null) {
         await criar.mutateAsync(payload);
