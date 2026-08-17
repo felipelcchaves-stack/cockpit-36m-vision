@@ -14,7 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ativos: {
+        Row: {
+          id: number
+          nome: string
+          tipo: string | null
+          valor: number
+        }
+        Insert: {
+          id?: number
+          nome: string
+          tipo?: string | null
+          valor: number
+        }
+        Update: {
+          id?: number
+          nome?: string
+          tipo?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
+      crm_receitas: {
+        Row: {
+          id: number
+          meta_quantidade: number
+          produto: string
+          status_campanha: string | null
+          ticket_medio: number
+        }
+        Insert: {
+          id?: number
+          meta_quantidade: number
+          produto: string
+          status_campanha?: string | null
+          ticket_medio: number
+        }
+        Update: {
+          id?: number
+          meta_quantidade?: number
+          produto?: string
+          status_campanha?: string | null
+          ticket_medio?: number
+        }
+        Relationships: []
+      }
+      passivos: {
+        Row: {
+          credor: string
+          fase_quitacao: string | null
+          id: number
+          saldo_devedor: number
+          status: string | null
+        }
+        Insert: {
+          credor: string
+          fase_quitacao?: string | null
+          id?: number
+          saldo_devedor: number
+          status?: string | null
+        }
+        Update: {
+          credor?: string
+          fase_quitacao?: string | null
+          id?: number
+          saldo_devedor?: number
+          status?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
