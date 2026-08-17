@@ -525,3 +525,72 @@ function Dashboard() {
     </div>
   );
 }
+
+function AporteCard({
+  competencia,
+  realizado,
+  disciplina,
+}: {
+  competencia: string;
+  realizado: number;
+  disciplina: number;
+}) {
+  const salvar = useSalvarAporte();
+  const [valor, setValor] = useState(String(realizado || ""));
+
+  useEffect(() => {
+    setValor(String(realizado || ""));
+  }, [realizado]);
+
+  const pct = Math.min(100, (realizado / APORTE_MENSAL) * 100);
+
+  const registrar = async () => {
+    try {
+      await salvar.mutateAsync({
+        competencia,
+        previsto: APORTE_MENSAL,
+        realizado: Number(valor) || 0,
+      });
+      toast.success("Aporte do mês registrado");
+    } catch {
+      toast.error("Não foi possível registrar o aporte");
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.32 }}
+      className="rounded-2xl border border-liquidity/25 bg-card/40 p-5"
+    >
+      <div className="flex items-center gap-2 text-liquidity">
+        <PiggyBank className="size-4" />
+        <h2 className="text-sm font-semibold uppercase tracking-wider">Aporte do mês</h2>
+      </div>
+      <p className="num mt-3 text-2xl font-semibold">
+        {brl(realizado)}
+        <span className="text-sm font-normal text-muted-foreground">/{brl(APORTE_MENSAL)}</span>
+      </p>
+      <Progress value={pct} className="mt-3 h-1.5 bg-secondary" />
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        {disciplina > 0
+          ? `${disciplina} ${disciplina === 1 ? "mês" : "meses"} seguidos cumprindo a governança.`
+          : "Governança pendente — R$ 70.000 religiosamente, todo mês."}
+      </p>
+      <div className="mt-3 flex gap-2">
+        <Input
+          inputMode="numeric"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          placeholder="70000"
+          className="h-8 text-xs"
+          aria-label="Valor aportado no mês"
+        />
+        <Button size="sm" className="h-8" onClick={() => void registrar()} disabled={salvar.isPending}>
+          Registrar
+        </Button>
+      </div>
+    </motion.div>
+  );
+}
