@@ -45,6 +45,7 @@ import {
   useParametros,
   usePassivos,
   useSalvarAporte,
+  useTransacoes,
 } from "@/lib/cockpit-queries";
 import {
   APORTE_MENSAL,
@@ -55,6 +56,7 @@ import {
   cascataFase1DiaD,
   cofreBlindado,
   cruzamentoMeta,
+  exterminioRealizado,
   projetar36M,
   rendaPassivaAtual,
 } from "@/lib/financeiro";
@@ -88,6 +90,7 @@ function Dashboard() {
   const { data: receitas = [] } = useCrmReceitas();
   const { data: parametros } = useParametros();
   const { data: aportes = [] } = useAportes();
+  const { data: transacoesRows = [] } = useTransacoes();
 
   const totalDebt = sumPassivos(passivosRows);
   const liquidity = sumPoderDeFogo(ativosRows);
@@ -124,11 +127,13 @@ function Dashboard() {
   const pagosLiquido = clients
     .filter((c) => c.status === "Pago")
     .reduce((s, c) => s + liquidoCli(c.valor, c.type), 0);
+  const exDash = exterminioRealizado({ passivos: passivosRows, transacoes: transacoesRows });
   const cascata = cascataFase1DiaD({
     passivos: passivosRows,
     ativos: ativosRows,
     municao: confirmadosLiquido,
     municaoRealizada: pagosLiquido,
+    originais: exDash.originais,
   });
 
 
@@ -292,6 +297,31 @@ function Dashboard() {
             <Link to="/ofensiva" className="text-[11px] text-gold underline underline-offset-4">
               Ver a cascata completa
             </Link>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 border-t border-border/50 pt-4 sm:grid-cols-2">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Passivo já exterminado
+            </p>
+            <p className="num mt-1 text-sm font-semibold text-liquidity">
+              {brl(exDash.abatido)}{" "}
+              <span className="text-[11px] font-normal text-muted-foreground">
+                de {brl(exDash.original)} · {exDash.pct.toFixed(1)}%
+              </span>
+            </p>
+          </div>
+          <div className="sm:text-right">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Ganho por antecipação na sobra
+            </p>
+            <p
+              className={`num mt-1 text-sm font-semibold ${
+                cascata.ganhoAntecipacao > 0 ? "gold-text" : "text-muted-foreground"
+              }`}
+            >
+              {cascata.ganhoAntecipacao > 0 ? `+ ${brl(cascata.ganhoAntecipacao)}` : "—"}
+            </p>
           </div>
         </div>
       </motion.div>

@@ -1,24 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Bomb, Landmark, Lock, Rocket } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { PainelLastro } from "@/components/painel-lastro";
+import { AmortizarSheet, type AlvoAmortizacao } from "@/components/amortizar-sheet";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { brl } from "@/lib/cockpit-store";
-import { useAtivos, usePassivos } from "@/lib/cockpit-queries";
+import { useAtivos, usePassivos, useTransacoes } from "@/lib/cockpit-queries";
 import {
   APORTE_DIA_D,
   LASTRO_INVESTIMENTO,
   QUITACAO_CONSIGNADO,
   brlExato,
+  cascataFase1DiaD,
   cofreBlindado,
+  exterminioRealizado,
   simularDiaD,
   valorAtivo,
   valorPassivo,
 } from "@/lib/financeiro";
+
 
 export const Route = createFileRoute("/dia-d")({
   head: () => ({
@@ -39,6 +44,7 @@ export const Route = createFileRoute("/dia-d")({
 function DiaD() {
   const { data: passivos = [] } = usePassivos();
   const { data: ativos = [] } = useAtivos();
+  const { data: transacoes = [] } = useTransacoes();
 
   const aporteBase = valorAtivo(ativos, "aporte", APORTE_DIA_D);
   const lastroBase = valorAtivo(ativos, "investimento", LASTRO_INVESTIMENTO);
@@ -47,6 +53,7 @@ function DiaD() {
   const ativoLastro = ativos.find((a) => `${a.nome} ${a.tipo ?? ""}`.toLowerCase().includes("investimento"));
 
   const [pctAporte, setPctAporte] = useState(100);
+  const [alvoAmortizar, setAlvoAmortizar] = useState<AlvoAmortizacao | null>(null);
   const aporte = (aporteBase * pctAporte) / 100;
 
   const sim = simularDiaD(passivos, {
@@ -54,6 +61,14 @@ function DiaD() {
     consignado: consignadoBase,
     lastro: lastroBase,
   });
+
+  // Tudo que já morreu antes do evento — rituais pagos e amortizações manuais.
+  const ex = useMemo(() => exterminioRealizado({ passivos, transacoes }), [passivos, transacoes]);
+  const ganho = useMemo(
+    () => cascataFase1DiaD({ passivos, ativos, municao: 0, originais: ex.originais }).ganhoAntecipacao,
+    [passivos, ativos, ex.originais],
+  );
+  const originalDe = (id: number) => ex.originais.get(id) ?? 0;
 
   const extintos = sim.alvos.filter((a) => a.extinto).length;
   const cobertura =
@@ -71,7 +86,40 @@ function DiaD() {
         description="O dinheiro do banco cai, o lastro destrava, o consignado morre — e o que sobra vira A Bazuca."
       />
 
+      {/* Memória do que já morreu antes do evento */}
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="grid gap-3 rounded-2xl border border-liquidity/30 bg-liquidity/[0.06] p-5 sm:grid-cols-2"
+      >
+        <div>
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Passivo já exterminado antes do evento
+          </p>
+          <p className="num mt-1 text-lg font-semibold text-liquidity">
+            {brlExato(ex.abatido)}{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              de {brl(ex.original)} · {ex.pct.toFixed(1)}%
+            </span>
+          </p>
+        </div>
+        <div className="sm:text-right">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Ganho por antecipação na sobra
+          </p>
+          <p
+            className={`num mt-1 text-lg font-semibold ${
+              ganho > 0 ? "gold-text" : "text-muted-foreground"
+            }`}
+          >
+            {ganho > 0 ? `+ ${brlExato(ganho)}` : "—"}
+          </p>
+        </div>
+      </motion.div>
+
       <PainelLastro ativo={ativoLastro} />
+
+
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
@@ -169,9 +217,11 @@ function DiaD() {
           <div className="mt-5 space-y-4">
             {sim.alvos.map((a) => {
               const pct = a.saldo > 0 ? (a.abatido / a.saldo) * 100 : 100;
+              const original = originalDe(a.id);
+              const antecipado = original > a.saldo;
               return (
                 <div key={a.id}>
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between gap-2 text-sm">
                     <span className={a.extinto ? "text-liquidity" : ""}>
                       {a.credor}
                       {a.extinto && (
@@ -179,10 +229,31 @@ function DiaD() {
                           extinto
                         </span>
                       )}
+                      {antecipado && (
+                        <span className="ml-2 rounded-full border border-gold/40 bg-gold/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-gold">
+                          antecipado
+                        </span>
+                      )}
                     </span>
-                    <span className="num text-xs text-muted-foreground">
-                      {brl(a.abatido)} de {brl(a.saldo)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="num text-xs text-muted-foreground">
+                        {antecipado && (
+                          <span className="mr-1 line-through opacity-60">{brl(original)}</span>
+                        )}
+                        {brl(a.abatido)} de {brl(a.saldo)}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-6 px-2 text-[10px]"
+                        disabled={a.saldo <= 0}
+                        onClick={() =>
+                          setAlvoAmortizar({ id: String(a.id), nome: a.credor, saldo: a.saldo })
+                        }
+                      >
+                        Amortizar
+                      </Button>
+                    </div>
                   </div>
                   <Progress
                     value={pct}
@@ -199,6 +270,9 @@ function DiaD() {
           </div>
         </div>
       </div>
+
+      <AmortizarSheet alvo={alvoAmortizar} onClose={() => setAlvoAmortizar(null)} />
+
     </div>
   );
 }
