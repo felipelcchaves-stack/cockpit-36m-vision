@@ -19,7 +19,7 @@ import {
   taxaAnualAtivo,
 } from "@/lib/financeiro";
 
-export const Route = createFileRoute("/comando")({
+export const Route = createFileRoute("/_authenticated/comando")({
   head: () => ({
     meta: [
       { title: "Sala de Comando | Cockpit 36M" },

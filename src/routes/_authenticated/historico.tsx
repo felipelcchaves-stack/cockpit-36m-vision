@@ -34,7 +34,7 @@ import { brl, useCockpit, type Tx } from "@/lib/cockpit-store";
 import { useAtivos, useRendimentos } from "@/lib/cockpit-queries";
 import { brlExato, categoriaExtrato, motivoExtrato, resumoRendimento } from "@/lib/financeiro";
 
-export const Route = createFileRoute("/historico")({
+export const Route = createFileRoute("/_authenticated/historico")({
   head: () => ({
     meta: [
       { title: "Histórico de Transações | Cockpit 36M" },
