@@ -206,6 +206,48 @@ function Dashboard() {
         ))}
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="rounded-2xl border border-gold/25 bg-gold/[0.06] p-5"
+        >
+          <div className="flex items-center gap-2 text-gold">
+            <Lock className="size-4" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider">
+              Cofre — Fundo de Reserva
+            </h2>
+          </div>
+          <p className="num mt-3 text-2xl font-semibold gold-text">{brl(reserva)}</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Blindado e intocável. Não entra na Bazuca, não amortiza passivo, não paga Leka.
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.24 }}
+          className={`rounded-2xl border p-5 ${
+            cartao.excede ? "border-debt/40 bg-debt/[0.08]" : "border-border bg-card/40"
+          }`}
+        >
+          <div className={`flex items-center gap-2 ${cartao.excede ? "text-debt" : "text-liquidity"}`}>
+            <CreditCard className="size-4" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider">Lei do Cartão</h2>
+          </div>
+          <p className="num mt-3 text-2xl font-semibold">{brl(cartao.faturaProjetada)}</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {cartao.excede
+              ? `Fatura projetada supera a receita livre em ${brl(cartao.gap)}. Corte gasto agora — zero rotativo, zero parcelamento.`
+              : "Fatura dentro da receita livre do mês. Pagamento integral antes do vencimento."}
+          </p>
+        </motion.div>
+      </div>
+
+
+
       <div className="grid gap-4 lg:grid-cols-3">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
