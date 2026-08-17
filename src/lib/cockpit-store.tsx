@@ -56,16 +56,6 @@ export type Phase = {
 const uid = () => Math.random().toString(36).slice(2, 10);
 const today = () => new Date().toISOString().slice(0, 10);
 
-const initialClients: Client[] = [
-  { id: "seed-1", name: "Marcos Vinícius", type: "Oye 30k", status: "Pago" },
-  { id: "seed-2", name: "Dona Iracema", type: "Premium 12k", status: "Pago" },
-  { id: "seed-3", name: "Rafael Antunes", type: "Ritual 4.5k", status: "Confirmado" },
-  { id: "seed-4", name: "Juliana Prado", type: "Egungun 5k", status: "Confirmado" },
-  { id: "seed-5", name: "Beatriz Lima", type: "Ritual 2.5k", status: "Interessado" },
-  { id: "seed-6", name: "Sr. Alvarenga", type: "Premium 12k", status: "Interessado" },
-  { id: "seed-7", name: "Cláudia Rocha", type: "Ritual 4.5k", status: "Interessado" },
-];
-
 const initialCreditors: Creditor[] = [
   { id: "seed-8", name: "Agiota", original: 95000, balance: 0, tag: "Extinto" },
   { id: "seed-9", name: "Oluwo", original: 220000, balance: 180000, tag: "Crítico" },
