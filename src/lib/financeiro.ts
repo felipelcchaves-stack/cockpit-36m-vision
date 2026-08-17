@@ -231,3 +231,40 @@ export function viradaDeChave(p: ParametrosFluxo) {
 
 /** Renda passiva que o patrimônio atual já geraria (0,5% a.m.). */
 export const rendaPassivaAtual = (patrimonio: number) => Math.max(0, patrimonio) * RETIRADA_SEGURA;
+
+/* ---------------- Rendimento do lastro (CDB) ---------------- */
+
+import type { Rendimento } from "@/lib/cockpit-queries";
+
+/** Taxa efetiva anual contratada do ativo (fixa ou % do CDI), em %. */
+export const taxaAnualAtivo = (a: Ativo) =>
+  a.modo_taxa === "fixa" ? a.taxa_aa : (a.cdi_aa * a.pct_cdi) / 100;
+
+/** Converte taxa anual (%) em taxa por dia útil (252 dias). */
+export const diariaDeAnual = (taxaAa: number) => Math.pow(1 + taxaAa / 100, 1 / 252) - 1;
+
+/** Quanto o ativo rende, em reais, num dia útil típico. */
+export const jurosDoDia = (a: Ativo) => a.valor * diariaDeAnual(taxaAnualAtivo(a));
+
+const soma = (rows: Rendimento[]) => rows.reduce((s, r) => s + r.juros, 0);
+
+export function resumoRendimento(rows: Rendimento[], ativoId?: number) {
+  const base = ativoId ? rows.filter((r) => r.ativo_id === ativoId) : rows;
+  const hoje = new Date().toISOString().slice(0, 10);
+  const mes = hoje.slice(0, 7);
+  return {
+    hoje: soma(base.filter((r) => r.data === hoje)),
+    mes: soma(base.filter((r) => r.data.startsWith(mes))),
+    total: soma(base),
+    lancamentos: base.length,
+  };
+}
+
+/** Curva do saldo do ativo nos últimos N dias, em ordem cronológica. */
+export function curvaLastro(rows: Rendimento[], ativoId: number, dias = 90) {
+  return rows
+    .filter((r) => r.ativo_id === ativoId)
+    .slice(0, dias)
+    .map((r) => ({ data: r.data.slice(5), saldo: r.saldo_final }))
+    .reverse();
+}

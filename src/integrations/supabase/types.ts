@@ -46,21 +46,39 @@ export type Database = {
       }
       ativos: {
         Row: {
+          cdi_aa: number
           id: number
+          modo_taxa: string
           nome: string
+          pct_cdi: number
+          rende: boolean
+          taxa_aa: number
           tipo: string | null
+          ultimo_fechamento: string
           valor: number
         }
         Insert: {
+          cdi_aa?: number
           id?: number
+          modo_taxa?: string
           nome: string
+          pct_cdi?: number
+          rende?: boolean
+          taxa_aa?: number
           tipo?: string | null
+          ultimo_fechamento?: string
           valor: number
         }
         Update: {
+          cdi_aa?: number
           id?: number
+          modo_taxa?: string
           nome?: string
+          pct_cdi?: number
+          rende?: boolean
+          taxa_aa?: number
           tipo?: string | null
+          ultimo_fechamento?: string
           valor?: number
         }
         Relationships: []
@@ -206,6 +224,47 @@ export type Database = {
         }
         Relationships: []
       }
+      rendimentos: {
+        Row: {
+          ativo_id: number
+          created_at: string
+          data: string
+          id: string
+          juros: number
+          origem: string
+          saldo_anterior: number
+          saldo_final: number
+        }
+        Insert: {
+          ativo_id: number
+          created_at?: string
+          data?: string
+          id?: string
+          juros?: number
+          origem?: string
+          saldo_anterior?: number
+          saldo_final?: number
+        }
+        Update: {
+          ativo_id?: number
+          created_at?: string
+          data?: string
+          id?: string
+          juros?: number
+          origem?: string
+          saldo_anterior?: number
+          saldo_final?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rendimentos_ativo_id_fkey"
+            columns: ["ativo_id"]
+            isOneToOne: false
+            referencedRelation: "ativos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roadmap_fases: {
         Row: {
           created_at: string
@@ -326,7 +385,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      render_ativos: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never

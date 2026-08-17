@@ -17,6 +17,22 @@ export type Ativo = {
   nome: string;
   valor: number;
   tipo: string | null;
+  rende: boolean;
+  modo_taxa: string;
+  taxa_aa: number;
+  pct_cdi: number;
+  cdi_aa: number;
+  ultimo_fechamento: string;
+};
+
+export type Rendimento = {
+  id: string;
+  ativo_id: number;
+  data: string;
+  saldo_anterior: number;
+  juros: number;
+  saldo_final: number;
+  origem: string;
 };
 
 export type CrmReceita = {
@@ -70,10 +86,20 @@ export const ativosQuery = queryOptions({
   queryFn: async (): Promise<Ativo[]> => {
     const { data, error } = await supabase
       .from("ativos")
-      .select("id, nome, valor, tipo")
+      .select(
+        "id, nome, valor, tipo, rende, modo_taxa, taxa_aa, pct_cdi, cdi_aa, ultimo_fechamento",
+      )
       .order("valor", { ascending: false });
     if (error) throw error;
-    return (data ?? []).map((r) => ({ ...r, valor: num(r.valor) }));
+    return (data ?? []).map((r) => ({
+      ...r,
+      valor: num(r.valor),
+      rende: Boolean(r.rende),
+      modo_taxa: r.modo_taxa ?? "cdi",
+      taxa_aa: num(r.taxa_aa),
+      pct_cdi: num(r.pct_cdi),
+      cdi_aa: num(r.cdi_aa),
+    }));
   },
 });
 
@@ -630,5 +656,101 @@ export function useSalvarParametros() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["parametros_mensais"] });
     },
+  });
+}
+
+/* ---------------- Rendimento diário do lastro (CDB) ---------------- */
+
+export const rendimentosQuery = queryOptions({
+  queryKey: ["rendimentos"],
+  queryFn: async (): Promise<Rendimento[]> => {
+    const { data, error } = await supabase
+      .from("rendimentos")
+      .select("id, ativo_id, data, saldo_anterior, juros, saldo_final, origem")
+      .order("data", { ascending: false })
+      .limit(400);
+    if (error) throw error;
+    return (data ?? []).map((r) => ({
+      ...r,
+      saldo_anterior: num(r.saldo_anterior),
+      juros: num(r.juros),
+      saldo_final: num(r.saldo_final),
+    }));
+  },
+});
+
+export const useRendimentos = () => useQuery(rendimentosQuery);
+
+const invalidateLastro = (qc: ReturnType<typeof useQueryClient>) => {
+  void qc.invalidateQueries({ queryKey: ["rendimentos"] });
+  void qc.invalidateQueries({ queryKey: ["ativos"] });
+};
+
+/** Roda a capitalização pendente (dias úteis desde o último fechamento). */
+export function useRenderAgora() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("render_ativos");
+      if (error) throw error;
+      return num(data);
+    },
+    onSuccess: () => invalidateLastro(qc),
+  });
+}
+
+/** Fecha o saldo real do extrato do banco e registra o ajuste. */
+export function useAjustarSaldoAtivo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      ativo,
+      saldoReal,
+    }: {
+      ativo: Ativo;
+      saldoReal: number;
+    }) => {
+      const hoje = new Date().toISOString().slice(0, 10);
+      const { error: errIns } = await supabase.from("rendimentos").upsert(
+        {
+          ativo_id: ativo.id,
+          data: hoje,
+          saldo_anterior: ativo.valor,
+          juros: saldoReal - ativo.valor,
+          saldo_final: saldoReal,
+          origem: "ajuste",
+        },
+        { onConflict: "ativo_id,data,origem" },
+      );
+      if (errIns) throw errIns;
+      const { error } = await supabase
+        .from("ativos")
+        .update({ valor: saldoReal, ultimo_fechamento: hoje })
+        .eq("id", ativo.id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateLastro(qc),
+  });
+}
+
+/** Atualiza a taxa contratada do ativo (CDI % ou taxa fixa a.a.). */
+export function useSalvarTaxaAtivo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...patch
+    }: {
+      id: number;
+      rende: boolean;
+      modo_taxa: string;
+      taxa_aa: number;
+      pct_cdi: number;
+      cdi_aa: number;
+    }) => {
+      const { error } = await supabase.from("ativos").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateLastro(qc),
   });
 }

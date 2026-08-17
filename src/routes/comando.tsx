@@ -9,8 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { brl, useCockpit } from "@/lib/cockpit-store";
 import { perguntarCfo } from "@/lib/cfo.functions";
-import { killList, sumPassivos, usePassivos } from "@/lib/cockpit-queries";
-import { APORTE_DIA_D, LASTRO_INVESTIMENTO, QUITACAO_CONSIGNADO } from "@/lib/financeiro";
+import { killList, sumPassivos, useAtivos, usePassivos, useRendimentos } from "@/lib/cockpit-queries";
+import {
+  APORTE_DIA_D,
+  LASTRO_INVESTIMENTO,
+  QUITACAO_CONSIGNADO,
+  jurosDoDia,
+  resumoRendimento,
+  taxaAnualAtivo,
+} from "@/lib/financeiro";
 
 export const Route = createFileRoute("/comando")({
   head: () => ({
@@ -55,6 +62,11 @@ function Comando() {
   const totalDebt = sumPassivos(passivos);
   const alvos = killList(passivos).filter((p) => p.saldo_devedor > 0);
 
+  const { data: ativosCtx = [] } = useAtivos();
+  const { data: rendimentosCtx = [] } = useRendimentos();
+  const lastro = ativosCtx.find((a) => `${a.nome} ${a.tipo ?? ""}`.toLowerCase().includes("investimento"));
+  const resumoRend = resumoRendimento(rendimentosCtx, lastro?.id);
+
   const contexto = [
     `Poder de fogo: ${brl(liquidity)}`,
     `Passivo total em aberto: ${brl(totalDebt)}`,
@@ -63,6 +75,12 @@ function Comando() {
     `Progresso rumo aos 36M: ${progress.toFixed(2)}%`,
     `Clientes no CRM: ${clients.length}`,
     `Dia D — aporte ${brl(APORTE_DIA_D)}, consignado ${brl(QUITACAO_CONSIGNADO)}, lastro ${brl(LASTRO_INVESTIMENTO)}`,
+    ...(lastro
+      ? [
+          `Lastro em CDB (${lastro.nome}): saldo ${brl(lastro.valor)}, taxa ${taxaAnualAtivo(lastro).toFixed(2)}% a.a., rende ~${brl(jurosDoDia(lastro))} por dia útil`,
+          `Rendimento do lastro: hoje ${brl(resumoRend.hoje)}, no mês ${brl(resumoRend.mes)}, acumulado ${brl(resumoRend.total)}`,
+        ]
+      : []),
     "Kill List (ordem oficial, saldo atual):",
     ...alvos.map((a, i) => `${i + 1}. ${a.credor} — ${brl(a.saldo_devedor)} (${a.fase_quitacao ?? "sem fase"})`),
   ].join("\n");
