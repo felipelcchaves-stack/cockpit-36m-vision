@@ -172,64 +172,7 @@ function Passivos() {
         })}
       </div>
 
-      <Sheet open={alvo !== null} onOpenChange={(o) => !o && setAlvo(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Amortizar {alvo?.nome}</SheetTitle>
-            <SheetDescription>
-              Saldo devedor atual: {alvo ? brl(alvo.saldo) : "—"}. A amortização entra no histórico.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="space-y-5 px-4">
-            <div className="space-y-2">
-              <Label htmlFor="amort">Valor da amortização (R$)</Label>
-              <Input
-                id="amort"
-                inputMode="decimal"
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
-                placeholder="30000"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>De onde saiu o dinheiro</Label>
-              <Select value={origem} onValueChange={setOrigem}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {fontes.map((a) => (
-                    <SelectItem key={a.id} value={`ativo:${a.id}`}>
-                      {a.nome} · {brl(a.valor)}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="externo">Outro / dinheiro externo</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground">
-                {origem === "externo"
-                  ? "Nenhum caixa do cockpit será debitado."
-                  : "O saldo dessa conta cai no mesmo valor e o saque entra no extrato do lastro."}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                O Fundo de Reserva de R$ 40.000 é blindado e não entra nesta lista.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={() => setValor(String(alvo?.saldo ?? 0))}
-              >
-                Extermínio total
-              </Button>
-              <Button className="flex-1" onClick={() => void confirmarAmortizacao()} disabled={debitar.isPending}>
-                Registrar
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
+      <AmortizarSheet alvo={alvo} onClose={() => setAlvo(null)} />
     </div>
   );
 }
