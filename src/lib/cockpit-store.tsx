@@ -27,7 +27,7 @@ export type Client = {
   name: string;
   type: EntryType;
   status: EntryStatus;
-  note?: string;
+  note?: string | undefined;
 };
 
 export type Creditor = {
