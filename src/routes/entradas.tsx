@@ -31,6 +31,7 @@ import {
   type EntryStatus,
   type EntryType,
 } from "@/lib/cockpit-store";
+import { potencial, useCrmReceitas } from "@/lib/cockpit-queries";
 
 export const Route = createFileRoute("/entradas")({
   head: () => ({
@@ -220,5 +221,69 @@ function Entradas() {
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+function CrmReceitasReais() {
+  const { data = [], isLoading, error } = useCrmReceitas();
+  const totalPotencial = data.reduce((s, r) => s + potencial(r), 0);
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card rounded-2xl p-5"
+    >
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">Catálogo de Receitas (dados reais)</h2>
+          <p className="text-xs text-muted-foreground">
+            Potencial = meta de quantidade x ticket médio de cada produto.
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Potencial total
+          </p>
+          <p className="num text-2xl font-semibold gold-text">{brl(totalPotencial)}</p>
+        </div>
+      </div>
+
+      {error && (
+        <p className="mt-4 text-sm text-debt">Não foi possível carregar as receitas.</p>
+      )}
+      {isLoading && <p className="mt-4 text-sm text-muted-foreground">Carregando receitas...</p>}
+
+      <div className="mt-5 overflow-x-auto">
+        <table className="w-full min-w-[620px] text-sm">
+          <thead>
+            <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+              <th className="pb-3 font-medium">Produto</th>
+              <th className="pb-3 font-medium">Status</th>
+              <th className="pb-3 text-right font-medium">Ticket médio</th>
+              <th className="pb-3 text-right font-medium">Meta</th>
+              <th className="pb-3 text-right font-medium">Potencial</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((r) => (
+              <tr key={r.id} className="border-t border-border/60">
+                <td className="py-3 font-medium">{r.produto}</td>
+                <td className="py-3">
+                  <span className="rounded-full border border-gold/30 bg-gold/10 px-2.5 py-1 text-[11px] text-gold">
+                    {r.status_campanha ?? "—"}
+                  </span>
+                </td>
+                <td className="num py-3 text-right text-muted-foreground">{brl(r.ticket_medio)}</td>
+                <td className="num py-3 text-right text-muted-foreground">{r.meta_quantidade}x</td>
+                <td className="num py-3 text-right font-semibold text-liquidity">
+                  {brl(potencial(r))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </motion.section>
   );
 }
