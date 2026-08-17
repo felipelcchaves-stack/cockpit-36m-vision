@@ -213,46 +213,45 @@ function Dashboard() {
           transition={{ delay: 0.25, duration: 0.45 }}
           className="glass-card rounded-2xl p-5 lg:col-span-2"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold">Queima de dívida x Liquidez</h2>
-              <p className="text-xs text-muted-foreground">Projeção dos últimos 8 ciclos</p>
+              <h2 className="text-base font-semibold">Rota até os 36M</h2>
+              <p className="text-xs text-muted-foreground">
+                Sobra livre reinvestida + aportes de R$ 70.000/mês a 0,9% a.m.
+              </p>
             </div>
             <div className="flex gap-4 text-[11px]">
               <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span className="size-2 rounded-full bg-liquidity" /> Liquidez
+                <span className="size-2 rounded-full bg-liquidity" /> Patrimônio
               </span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span className="size-2 rounded-full bg-debt" /> Passivos
+                <span className="size-2 rounded-full bg-gold" /> Meta 36M
               </span>
             </div>
           </div>
           <div className="mt-5 h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ left: -12, right: 8, top: 8 }}>
+              <AreaChart data={projecao} margin={{ left: -12, right: 8, top: 8 }}>
                 <defs>
                   <linearGradient id="gLiq" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--liquidity)" stopOpacity={0.5} />
                     <stop offset="100%" stopColor="var(--liquidity)" stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient id="gDebt" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--debt)" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="var(--debt)" stopOpacity={0} />
-                  </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 6" stroke="var(--border)" vertical={false} />
                 <XAxis
-                  dataKey="mes"
+                  dataKey="idade"
                   tickLine={false}
                   axisLine={false}
                   tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+                  tickFormatter={(v: number) => `${v}a`}
                 />
                 <YAxis
                   tickLine={false}
                   axisLine={false}
                   width={70}
                   tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                  tickFormatter={(v: number) => `${Math.round(v / 1000)}k`}
+                  tickFormatter={(v: number) => `${Math.round(v / 1_000_000)}M`}
                 />
                 <Tooltip
                   contentStyle={{
@@ -262,25 +261,35 @@ function Dashboard() {
                     color: "var(--foreground)",
                     fontSize: 12,
                   }}
+                  labelFormatter={(v: number) => `${v} anos`}
                   formatter={(v: number) => brl(v)}
                 />
                 <Area
                   type="monotone"
-                  dataKey="liquidez"
+                  dataKey="patrimonio"
+                  name="Patrimônio"
                   stroke="var(--liquidity)"
                   strokeWidth={2.5}
                   fill="url(#gLiq)"
                 />
                 <Area
                   type="monotone"
-                  dataKey="passivos"
-                  stroke="var(--debt)"
-                  strokeWidth={2.5}
-                  fill="url(#gDebt)"
+                  dataKey="meta"
+                  name="Meta"
+                  stroke="var(--gold)"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 5"
+                  fill="none"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            {cruzamento
+              ? `Cruzamento da meta aos ${cruzamento.idade} anos (${cruzamento.ano}) — renda passiva de ${brl(cruzamento.rendaPassiva)}/mês.`
+              : `Neste ritmo você chega a ${brl(projecao[projecao.length - 1]?.patrimonio ?? 0)} aos 66 anos — ${brl(META_PATRIMONIO - (projecao[projecao.length - 1]?.patrimonio ?? 0))} abaixo da meta.`}
+          </p>
+
         </motion.div>
 
         <motion.div
