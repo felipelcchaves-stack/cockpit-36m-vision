@@ -309,6 +309,26 @@ export function cascataFase1DiaD(args: {
 
   const sim = simularDiaD(passivosPos, { aporte: aporte + troco, consignado, lastro });
 
+  // Cenário "sem antecipação": mesmos ativos, mas com os saldos originais dos
+  // credores. A diferença de sobra é o ganho de ter matado passivo antes do Dia D.
+  let ganhoAntecipacao = 0;
+  if (args.originais && args.originais.size > 0) {
+    const baseline = passivosPos.map((p) => {
+      const original = args.originais?.get(p.id);
+      if (original === undefined || original <= p.saldo_devedor) return p;
+      return { ...p, saldo_devedor: original, status: "Pendente" };
+    });
+    const consignadoBase = args.originais.get(
+      passivos.find((p) => p.credor.toLowerCase().includes("consignad"))?.id ?? -1,
+    );
+    const simBase = simularDiaD(baseline, {
+      aporte: aporte + troco,
+      consignado: consignadoBase ?? consignado,
+      lastro,
+    });
+    ganhoAntecipacao = sim.sobra - simBase.sobra;
+  }
+
   return {
     municao,
     pipeline,
@@ -320,6 +340,7 @@ export function cascataFase1DiaD(args: {
     lastro,
     consignado,
     sim,
+    ganhoAntecipacao,
     reserva: cofreBlindado(ativos),
     sobraLivre: sim.sobra,
     passivoRestante: sim.passivoRestante,
