@@ -83,15 +83,17 @@ function Entradas() {
   const [name, setName] = useState("");
   const [type, setType] = useState<EntryType>("Ritual 4.5k");
   const [status, setStatus] = useState<EntryStatus>("Interessado");
+  const [ritualDate, setRitualDate] = useState("");
 
   const submit = () => {
     if (!name.trim()) {
       toast.error("Informe o nome do cliente");
       return;
     }
-    addClient({ name: name.trim(), type, status });
+    addClient({ name: name.trim(), type, status, ritualDate: ritualDate || null });
     toast.success(`${name} adicionado ao pipeline`);
     setName("");
+    setRitualDate("");
     setOpen(false);
   };
 
@@ -168,6 +170,12 @@ function Entradas() {
                       </div>
                       <span className="num text-sm">{brl(ENTRY_VALUES[c.type])}</span>
                     </div>
+                    {(c.ritualDate || c.paymentDate) && (
+                      <p className="mt-2 text-[10px] text-muted-foreground">
+                        {c.ritualDate ? `Ritual ${dataBR(c.ritualDate)}` : "Sem data de ritual"}
+                        {c.paymentDate ? ` · Pago em ${dataBR(c.paymentDate)}` : ""}
+                      </p>
+                    )}
                     <div className="mt-3 flex items-center gap-2">
                       {c.status !== "Pago" && (
                         <Button
@@ -221,6 +229,15 @@ function Entradas() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dtritual">Data do ritual</Label>
+              <Input
+                id="dtritual"
+                type="date"
+                value={ritualDate}
+                onChange={(e) => setRitualDate(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
