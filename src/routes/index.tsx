@@ -9,7 +9,16 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowDownRight, ArrowUpRight, Flame, Sparkles, Target, Wallet } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  CreditCard,
+  Flame,
+  Lock,
+  Sparkles,
+  Target,
+  Wallet,
+} from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { ENTRY_VALUES, brl, useCockpit } from "@/lib/cockpit-store";
@@ -26,6 +35,15 @@ import {
   useCrmReceitas,
   usePassivos,
 } from "@/lib/cockpit-queries";
+import {
+  FATURA_CARTAO,
+  META_PATRIMONIO,
+  alertaCartao,
+  cofreBlindado,
+  cruzamentoMeta,
+  projetar36M,
+} from "@/lib/financeiro";
+
 import { Progress } from "@/components/ui/progress";
 
 export const Route = createFileRoute("/")({
