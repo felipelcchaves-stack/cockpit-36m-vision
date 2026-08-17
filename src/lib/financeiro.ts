@@ -196,12 +196,21 @@ export type AbatePreDiaD = {
 export function cascataFase1DiaD(args: {
   passivos: Passivo[];
   ativos: Ativo[];
+  /** Munição ainda a receber (pipeline do Kanban), líquida de custo. */
   municao: number;
+  /**
+   * Munição já recebida (clientes pagos), líquida de custo. Esse dinheiro já
+   * baixou o saldo dos passivos no banco, então entra como histórico —
+   * nunca é reaplicado sobre o saldo em aberto atual.
+   */
+  municaoRealizada?: number;
 }) {
   const { passivos, ativos } = args;
-  const municao = Math.max(0, args.municao);
+  const pipeline = Math.max(0, args.municao);
+  const jaExterminado = Math.max(0, args.municaoRealizada ?? 0);
+  const municao = pipeline + jaExterminado;
 
-  let caixa = municao;
+  let caixa = pipeline;
   const abates: AbatePreDiaD[] = alvosVivos(passivos)
     .filter((p) => ehAlvoPreDiaD(p.credor))
     .map((p) => {
@@ -235,6 +244,8 @@ export function cascataFase1DiaD(args: {
 
   return {
     municao,
+    pipeline,
+    jaExterminado,
     abates,
     faltaVender,
     troco,
@@ -247,6 +258,7 @@ export function cascataFase1DiaD(args: {
     passivoRestante: sim.passivoRestante,
   };
 }
+
 
 
 
