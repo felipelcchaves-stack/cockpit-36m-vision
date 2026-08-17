@@ -78,6 +78,8 @@ function Dashboard() {
   const { data: passivosRows = [], isLoading: loadingPassivos } = usePassivos();
   const { data: ativosRows = [], isLoading: loadingAtivos } = useAtivos();
   const { data: receitas = [] } = useCrmReceitas();
+  const { data: parametros } = useParametros();
+  const { data: aportes = [] } = useAportes();
 
   const totalDebt = sumPassivos(passivosRows);
   const liquidity = sumPoderDeFogo(ativosRows);
@@ -87,7 +89,17 @@ function Dashboard() {
   const reserva = cofreBlindado(ativosRows);
   const projecao = projetar36M(Math.max(0, freeSurplus));
   const cruzamento = cruzamentoMeta(projecao);
-  const cartao = alertaCartao(FATURA_CARTAO, Math.max(0, freeSurplus));
+  const faturaAtual = parametros?.fatura_cartao ?? FATURA_CARTAO;
+  const receitaLivreMes = parametros?.receita_livre_mes ?? Math.max(0, freeSurplus);
+  const cartao = alertaCartao(faturaAtual, receitaLivreMes);
+  const rendaHoje = rendaPassivaAtual(Math.max(0, freeSurplus));
+  const pctRenda = Math.min(100, (rendaHoje / RENDA_PASSIVA_ALVO) * 100);
+
+  const competencia = `${new Date().toISOString().slice(0, 7)}-01`;
+  const aporteMes = aportes.find((a) => a.competencia === competencia);
+  const disciplina = sequenciaDisciplina(aportes);
+
+
 
 
   const paidCreditors = creditors.filter((c) => c.balance === 0).length;
