@@ -330,6 +330,87 @@ function Roadmap() {
                     </div>
                   </div>
 
+                  {phase.ordem === 1 && alvosFase1.length > 0 && (
+                    <div className="mt-4 rounded-xl border border-border/60 bg-secondary/30 p-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                          Kill List pré-Dia D (ao vivo)
+                        </p>
+                        {fase1Cumprida && (
+                          <span className="rounded-full border border-liquidity/40 bg-liquidity/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-liquidity">
+                            Alvos exterminados
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-3 space-y-3">
+                        {alvosFase1.map((a) => {
+                          const pctAlvo = a.original > 0 ? (a.abatido / a.original) * 100 : 100;
+                          return (
+                            <div key={a.id}>
+                              <div className="flex justify-between text-xs">
+                                <span className={a.extinto ? "text-liquidity" : ""}>{a.credor}</span>
+                                <span className="num text-muted-foreground">
+                                  {brl(a.abatido)} abatidos · {brl(a.restante)} em aberto
+                                </span>
+                              </div>
+                              <Progress
+                                value={pctAlvo}
+                                className={`mt-1.5 h-1.5 bg-secondary ${a.extinto ? "[&>div]:bg-liquidity" : ""}`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {phase.ordem === 3 && (
+                    <div className="mt-4 rounded-xl border border-gold/30 bg-gold/[0.06] p-4">
+                      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                        Alvo atualizado da Bazuca
+                      </p>
+                      <div className="mt-2 grid gap-3 sm:grid-cols-3">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                            Passivo a cobrir
+                          </p>
+                          <p className="num text-sm font-semibold text-debt">
+                            {brl(alvosBazuca.reduce((s, a) => s + a.saldo, 0))}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                            Sobra livre projetada
+                          </p>
+                          <p className="num text-sm font-semibold gold-text">
+                            {brl(cascata.sobraLivre)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                            Ganho por antecipação
+                          </p>
+                          <p
+                            className={`num text-sm font-semibold ${
+                              cascata.ganhoAntecipacao > 0 ? "text-liquidity" : "text-muted-foreground"
+                            }`}
+                          >
+                            {cascata.ganhoAntecipacao > 0
+                              ? `+ ${brl(cascata.ganhoAntecipacao)}`
+                              : "—"}
+                          </p>
+                        </div>
+                      </div>
+                      {cascata.passivoRestante === 0 && (
+                        <p className="mt-3 text-[11px] text-liquidity">
+                          A Bazuca cobre 100% da Kill List — passivo zerado no disparo.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+
+
                   <ul className="mt-4 space-y-3">
                     {phase.tarefas.map((t) => (
                       <li key={t.id} className="flex items-center gap-3">
