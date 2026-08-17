@@ -18,6 +18,7 @@ import { Route as AuthenticatedEntradasRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authenticated/historico'
 import { Route as AuthenticatedOfensivaRouteImport } from './routes/_authenticated/ofensiva'
 import { Route as AuthenticatedPassivosRouteImport } from './routes/_authenticated/passivos'
+import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedRoadmapRouteImport } from './routes/_authenticated/roadmap'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -64,6 +65,11 @@ const AuthenticatedPassivosRoute = AuthenticatedPassivosRouteImport.update({
   path: '/passivos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPerfilRoute = AuthenticatedPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedRoadmapRoute = AuthenticatedRoadmapRouteImport.update({
   id: '/roadmap',
   path: '/roadmap',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/historico': typeof AuthenticatedHistoricoRoute
   '/ofensiva': typeof AuthenticatedOfensivaRoute
   '/passivos': typeof AuthenticatedPassivosRoute
+  '/perfil': typeof AuthenticatedPerfilRoute
   '/roadmap': typeof AuthenticatedRoadmapRoute
 }
 export interface FileRoutesByTo {
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/historico': typeof AuthenticatedHistoricoRoute
   '/ofensiva': typeof AuthenticatedOfensivaRoute
   '/passivos': typeof AuthenticatedPassivosRoute
+  '/perfil': typeof AuthenticatedPerfilRoute
   '/roadmap': typeof AuthenticatedRoadmapRoute
   '/': typeof AuthenticatedIndexRoute
 }
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
   '/_authenticated/ofensiva': typeof AuthenticatedOfensivaRoute
   '/_authenticated/passivos': typeof AuthenticatedPassivosRoute
+  '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/roadmap': typeof AuthenticatedRoadmapRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/historico'
     | '/ofensiva'
     | '/passivos'
+    | '/perfil'
     | '/roadmap'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/historico'
     | '/ofensiva'
     | '/passivos'
+    | '/perfil'
     | '/roadmap'
     | '/'
   id:
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/_authenticated/historico'
     | '/_authenticated/ofensiva'
     | '/_authenticated/passivos'
+    | '/_authenticated/perfil'
     | '/_authenticated/roadmap'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
@@ -212,6 +224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPassivosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/perfil': {
+      id: '/_authenticated/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof AuthenticatedPerfilRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/roadmap': {
       id: '/_authenticated/roadmap'
       path: '/roadmap'
@@ -229,6 +248,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
   AuthenticatedOfensivaRoute: typeof AuthenticatedOfensivaRoute
   AuthenticatedPassivosRoute: typeof AuthenticatedPassivosRoute
+  AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedRoadmapRoute: typeof AuthenticatedRoadmapRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
@@ -240,6 +260,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,
   AuthenticatedOfensivaRoute: AuthenticatedOfensivaRoute,
   AuthenticatedPassivosRoute: AuthenticatedPassivosRoute,
+  AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedRoadmapRoute: AuthenticatedRoadmapRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }

@@ -74,8 +74,14 @@ function Perfil() {
 
   const upload = (file: File | undefined) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) return toast.error("Envie um arquivo de imagem.");
-    if (file.size > 5 * 1024 * 1024) return toast.error("Imagem acima de 5 MB.");
+    if (!file.type.startsWith("image/")) {
+      toast.error("Envie um arquivo de imagem.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Imagem acima de 5 MB.");
+      return;
+    }
     enviarAvatar.mutate(file, {
       onSuccess: () => toast.success("Foto atualizada."),
       onError: (e) => toast.error(e instanceof Error ? e.message : "Falhou o upload"),
@@ -83,12 +89,21 @@ function Perfil() {
   };
 
   const trocarSenha = async () => {
-    if (novaSenha.length < 8) return toast.error("A nova senha precisa de 8+ caracteres.");
-    if (novaSenha !== confirmaSenha) return toast.error("As senhas não conferem.");
+    if (novaSenha.length < 8) {
+      toast.error("A nova senha precisa de 8+ caracteres.");
+      return;
+    }
+    if (novaSenha !== confirmaSenha) {
+      toast.error("As senhas não conferem.");
+      return;
+    }
     setTrocando(true);
     const { error } = await supabase.auth.updateUser({ password: novaSenha });
     setTrocando(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     setNovaSenha("");
     setConfirmaSenha("");
     toast.success("Senha alterada.");
