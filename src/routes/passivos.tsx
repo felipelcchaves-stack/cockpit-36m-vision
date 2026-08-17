@@ -63,58 +63,8 @@ function Passivos() {
     vivosRef.current = vivos;
   }, [lista, isLoading]);
 
-  const abrirAmortizacao = (id: number, credor: string, saldo: number) => {
+  const abrirAmortizacao = (id: number, credor: string, saldo: number) =>
     setAlvo({ id: String(id), nome: credor, saldo });
-    setValor("");
-    const preferida =
-      fontes.find((a) => `${a.nome} ${a.tipo ?? ""}`.toLowerCase().includes("investimento")) ??
-      fontes[0];
-    setOrigem(preferida ? `ativo:${preferida.id}` : "externo");
-  };
-
-  const confirmarAmortizacao = async () => {
-    if (!alvo) return;
-    const v = Number(valor.replace(/\./g, "").replace(",", "."));
-    if (!v || v <= 0) {
-      toast.error("Informe o valor da amortização");
-      return;
-    }
-    const pago = Math.min(v, alvo.saldo);
-    const fonte = origem.startsWith("ativo:")
-      ? fontes.find((a) => a.id === Number(origem.slice(6)))
-      : undefined;
-
-    if (fonte && fonte.valor < pago) {
-      toast.error(`${fonte.nome} tem apenas ${brl(fonte.valor)} disponíveis`);
-      return;
-    }
-
-    amortize(alvo.id, pago);
-    if (fonte) {
-      try {
-        await debitar.mutateAsync({
-          ativo: fonte,
-          valor: pago,
-          motivo: `Amortização ${alvo.nome}`,
-        });
-        // Contrapartida do resgate: o saldo sai do ativo e entra no caixa que pagou a dívida.
-        addTx({
-          date: new Date().toISOString().slice(0, 10),
-          description: `Resgate ${fonte.nome} — Amortização ${alvo.nome}`,
-          kind: "Receita",
-          amount: pago,
-        });
-      } catch {
-        toast.error("Passivo abatido, mas não consegui debitar a origem do dinheiro");
-      }
-    }
-    toast.success(
-      fonte
-        ? `${brl(pago)} saíram de ${fonte.nome} para abater ${alvo.nome}`
-        : `Amortização de ${brl(pago)} registrada em ${alvo.nome}`,
-    );
-    setAlvo(null);
-  };
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
