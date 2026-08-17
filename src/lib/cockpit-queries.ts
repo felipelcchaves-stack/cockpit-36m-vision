@@ -717,7 +717,14 @@ export function useAjustarSaldoAtivo() {
       const delta = saldoReal - ativo.valor;
       const juro = Math.abs(rendimentoEstimado) > Math.abs(delta) ? delta : rendimentoEstimado;
       const movimento = delta - juro;
-      const linhas: Array<Record<string, unknown>> = [];
+      const linhas: Array<{
+        ativo_id: number;
+        data: string;
+        saldo_anterior: number;
+        juros: number;
+        saldo_final: number;
+        origem: string;
+      }> = [];
       let saldo = ativo.valor;
       if (juro !== 0) {
         linhas.push({
@@ -741,13 +748,8 @@ export function useAjustarSaldoAtivo() {
         });
       }
       if (linhas.length) {
-        const { error: errIns } = await supabase
-          .from("rendimentos")
-          .upsert(linhas, { onConflict: "ativo_id,data", ignoreDuplicates: false });
-        if (errIns) {
-          const { error: errPlain } = await supabase.from("rendimentos").insert(linhas);
-          if (errPlain) throw errPlain;
-        }
+        const { error: errIns } = await supabase.from("rendimentos").insert(linhas);
+        if (errIns) throw errIns;
       }
       const { error } = await supabase
         .from("ativos")
