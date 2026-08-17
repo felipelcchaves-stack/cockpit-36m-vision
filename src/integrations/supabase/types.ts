@@ -40,6 +40,7 @@ export type Database = {
           id: number
           meta_quantidade: number
           produto: string
+          quantidade_realizada: number
           status_campanha: string | null
           ticket_medio: number
         }
@@ -47,6 +48,7 @@ export type Database = {
           id?: number
           meta_quantidade: number
           produto: string
+          quantidade_realizada?: number
           status_campanha?: string | null
           ticket_medio: number
         }
@@ -54,6 +56,7 @@ export type Database = {
           id?: number
           meta_quantidade?: number
           produto?: string
+          quantidade_realizada?: number
           status_campanha?: string | null
           ticket_medio?: number
         }

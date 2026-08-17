@@ -22,6 +22,15 @@ export type CrmReceita = {
   produto: string;
   ticket_medio: number;
   meta_quantidade: number;
+  quantidade_realizada: number;
+  status_campanha: string | null;
+};
+
+export type CrmReceitaInput = {
+  produto: string;
+  ticket_medio: number;
+  meta_quantidade: number;
+  quantidade_realizada: number;
   status_campanha: string | null;
 };
 
@@ -56,13 +65,14 @@ export const crmReceitasQuery = queryOptions({
   queryFn: async (): Promise<CrmReceita[]> => {
     const { data, error } = await supabase
       .from("crm_receitas")
-      .select("id, produto, ticket_medio, meta_quantidade, status_campanha")
+      .select("id, produto, ticket_medio, meta_quantidade, quantidade_realizada, status_campanha")
       .order("id");
     if (error) throw error;
     return (data ?? []).map((r) => ({
       ...r,
       ticket_medio: num(r.ticket_medio),
       meta_quantidade: num(r.meta_quantidade),
+      quantidade_realizada: num((r as { quantidade_realizada?: number }).quantidade_realizada),
     }));
   },
 });
@@ -87,6 +97,51 @@ export const sumPoderDeFogo = (rows: Ativo[] = []) =>
   rows.filter(isPoderDeFogo).reduce((s, a) => s + a.valor, 0);
 
 export const potencial = (r: CrmReceita) => r.ticket_medio * r.meta_quantidade;
+
+/** Valor já realizado do produto (vendas registradas x ticket). */
+export const realizado = (r: CrmReceita) => r.ticket_medio * r.quantidade_realizada;
+
+/** Percentual de avanço da meta (0-100). */
+export const progresso = (r: CrmReceita) =>
+  r.meta_quantidade > 0
+    ? Math.min(100, Math.round((r.quantidade_realizada / r.meta_quantidade) * 100))
+    : 0;
+
+const invalidateReceitas = (qc: ReturnType<typeof useQueryClient>) =>
+  void qc.invalidateQueries({ queryKey: ["crm_receitas"] });
+
+export function useCriarReceita() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CrmReceitaInput) => {
+      const { error } = await supabase.from("crm_receitas").insert(input);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateReceitas(qc),
+  });
+}
+
+export function useAtualizarReceita() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: Partial<CrmReceitaInput> & { id: number }) => {
+      const { error } = await supabase.from("crm_receitas").update(input).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateReceitas(qc),
+  });
+}
+
+export function useRemoverReceita() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase.from("crm_receitas").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateReceitas(qc),
+  });
+}
 
 export function useMarcarPassivoPago() {
   const qc = useQueryClient();
