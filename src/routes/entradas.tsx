@@ -252,6 +252,8 @@ type ReceitaForm = {
   meta_quantidade: string;
   quantidade_realizada: string;
   status_campanha: string;
+  data_ritual: string;
+  data_pagamento_prevista: string;
 };
 
 const emptyForm: ReceitaForm = {
@@ -260,7 +262,10 @@ const emptyForm: ReceitaForm = {
   meta_quantidade: "",
   quantidade_realizada: "0",
   status_campanha: "Em Captação",
+  data_ritual: "",
+  data_pagamento_prevista: "",
 };
+
 
 function CrmReceitasReais() {
   const { data = [], isLoading, error } = useCrmReceitas();
