@@ -248,16 +248,55 @@ export const jurosDoDia = (a: Ativo) => a.valor * diariaDeAnual(taxaAnualAtivo(a
 
 const soma = (rows: Rendimento[]) => rows.reduce((s, r) => s + r.juros, 0);
 
+export type CategoriaExtrato = "rendimento" | "saque" | "ajuste";
+
+/** Classifica a linha do extrato do lastro. */
+export function categoriaExtrato(r: Rendimento): CategoriaExtrato {
+  if (r.origem.startsWith("saque")) return "saque";
+  if (r.origem === "ajuste") return "ajuste";
+  return "rendimento";
+}
+
+/** Motivo legível de um saque ("saque:Amortização Agiota"). */
+export const motivoExtrato = (r: Rendimento) =>
+  r.origem.startsWith("saque:") ? r.origem.slice(6) : "";
+
 export function resumoRendimento(rows: Rendimento[], ativoId?: number) {
   const base = ativoId ? rows.filter((r) => r.ativo_id === ativoId) : rows;
+  const juros = base.filter((r) => categoriaExtrato(r) === "rendimento");
   const hoje = new Date().toISOString().slice(0, 10);
   const mes = hoje.slice(0, 7);
+  const doMes = base.filter((r) => r.data.startsWith(mes));
   return {
-    hoje: soma(base.filter((r) => r.data === hoje)),
-    mes: soma(base.filter((r) => r.data.startsWith(mes))),
-    total: soma(base),
+    hoje: soma(juros.filter((r) => r.data === hoje)),
+    mes: soma(juros.filter((r) => r.data.startsWith(mes))),
+    total: soma(juros),
+    saquesMes: Math.abs(soma(doMes.filter((r) => categoriaExtrato(r) === "saque"))),
+    ajustesMes: soma(doMes.filter((r) => categoriaExtrato(r) === "ajuste")),
     lancamentos: base.length,
   };
+}
+
+/** Dias corridos e dias úteis entre a última conferência e hoje. */
+export function desdeUltimoFechamento(iso: string) {
+  const base = new Date(`${iso}T00:00:00`);
+  const hoje = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00");
+  const corridos = Math.max(0, Math.round((hoje.getTime() - base.getTime()) / 86400000));
+  let uteis = 0;
+  for (let i = 1; i <= corridos; i++) {
+    const d = new Date(base.getTime() + i * 86400000);
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) uteis++;
+  }
+  return { corridos, uteis };
+}
+
+/** Quanto o ativo deveria ter rendido desde a última conferência. */
+export function rendimentoEstimado(a: Ativo) {
+  const { corridos, uteis } = desdeUltimoFechamento(a.ultimo_fechamento);
+  const taxaDia = diariaDeAnual(taxaAnualAtivo(a));
+  const valor = a.valor * (Math.pow(1 + taxaDia, uteis) - 1);
+  return { corridos, uteis, valor };
 }
 
 /** Curva do saldo do ativo nos últimos N dias, em ordem cronológica. */

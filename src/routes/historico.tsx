@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/table";
 import { brl, useCockpit, type Tx } from "@/lib/cockpit-store";
 import { useAtivos, useRendimentos } from "@/lib/cockpit-queries";
-import { brlExato, resumoRendimento } from "@/lib/financeiro";
+import { brlExato, categoriaExtrato, motivoExtrato, resumoRendimento } from "@/lib/financeiro";
 
 export const Route = createFileRoute("/historico")({
   head: () => ({
@@ -118,15 +118,18 @@ function Historico() {
         >
           <div className="grid gap-3 border-b border-border/60 p-5 sm:grid-cols-3">
             {[
-              { label: "Rendeu hoje", value: resumo.hoje },
-              { label: "Rendeu no mês", value: resumo.mes },
-              { label: "Rendeu no total", value: resumo.total },
+              { label: "Juro no mês", value: resumo.mes, tone: "text-liquidity" },
+              { label: "Saques no mês", value: -resumo.saquesMes, tone: "text-debt" },
+              { label: "Juro acumulado", value: resumo.total, tone: "gold-text" },
             ].map((m) => (
               <div key={m.label}>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   {m.label}
                 </p>
-                <p className="num mt-1 text-lg font-semibold text-liquidity">{brlExato(m.value)}</p>
+                <p className={`num mt-1 text-lg font-semibold ${m.tone}`}>
+                  {m.value < 0 ? "−" : ""}
+                  {brlExato(Math.abs(m.value))}
+                </p>
               </div>
             ))}
           </div>
@@ -156,15 +159,26 @@ function Historico() {
                   </TableCell>
                   <TableCell className="text-sm">{nomeAtivo(r.ativo_id)}</TableCell>
                   <TableCell>
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] ${
-                        r.origem === "ajuste"
-                          ? "border-gold/30 bg-gold/10 text-gold"
-                          : "border-liquidity/30 bg-liquidity/10 text-liquidity"
-                      }`}
-                    >
-                      {r.origem === "ajuste" ? "Ajuste do extrato" : "Rendimento"}
-                    </span>
+                    {(() => {
+                      const cat = categoriaExtrato(r);
+                      const tone =
+                        cat === "saque"
+                          ? "border-debt/30 bg-debt/10 text-debt"
+                          : cat === "ajuste"
+                            ? "border-gold/30 bg-gold/10 text-gold"
+                            : "border-liquidity/30 bg-liquidity/10 text-liquidity";
+                      const label =
+                        cat === "saque"
+                          ? (motivoExtrato(r) || "Saque")
+                          : cat === "ajuste"
+                            ? "Ajuste do extrato"
+                            : "Rendimento";
+                      return (
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] ${tone}`}>
+                          {label}
+                        </span>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="num text-right text-xs text-muted-foreground">
                     {brlExato(r.saldo_anterior)}
