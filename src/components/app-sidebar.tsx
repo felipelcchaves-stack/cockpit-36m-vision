@@ -80,6 +80,34 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname === "/perfil"}
+              tooltip={perfil?.nome ?? "Meu perfil"}
+              className="data-[active=true]:bg-gold/10 data-[active=true]:text-gold"
+            >
+              <Link to="/perfil" className="flex items-center gap-3">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="size-5 rounded-md object-cover" />
+                ) : (
+                  <UserRound className="size-4" />
+                )}
+                <span className="truncate">{perfil?.nome ?? "Meu perfil"}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip="Sair" onClick={sair}>
+              <LogOut className="size-4" />
+              <span>Sair</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }
+
