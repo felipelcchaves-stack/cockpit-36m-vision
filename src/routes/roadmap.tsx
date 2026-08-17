@@ -84,7 +84,7 @@ function Roadmap() {
   const alvosFase1 = ex.alvos.filter((a) => a.preDiaD);
   const fase1Cumprida = alvosFase1.length > 0 && alvosFase1.every((a) => a.extinto);
   const alvosBazuca = cascata.sim.alvos.filter(
-    (a) => !ALVOS_FASE1.some((t) => a.credor.toLowerCase().includes(t)),
+    (a) => !alvosFase1.some((f) => f.credor === a.credor),
   );
 
 
