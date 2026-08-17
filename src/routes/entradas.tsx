@@ -61,7 +61,10 @@ function Entradas() {
   const [status, setStatus] = useState<EntryStatus>("Interessado");
 
   const submit = () => {
-    if (!name.trim()) return toast.error("Informe o nome do cliente");
+    if (!name.trim()) {
+      toast.error("Informe o nome do cliente");
+      return;
+    }
     addClient({ name: name.trim(), type, status });
     toast.success(`${name} adicionado ao pipeline`);
     setName("");
@@ -69,7 +72,7 @@ function Entradas() {
   };
 
   const advance = (id: string, current: EntryStatus, clientName: string) => {
-    const next = ENTRY_STATUSES[Math.min(2, ENTRY_STATUSES.indexOf(current) + 1)];
+    const next = ENTRY_STATUSES[Math.min(2, ENTRY_STATUSES.indexOf(current) + 1)]!;
     setClientStatus(id, next);
     if (next === "Pago") toast.success(`${clientName} pago — liquidez atualizada`);
   };
