@@ -1,4 +1,5 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Users,
@@ -9,11 +10,14 @@ import {
   Bomb,
   Crosshair,
   Crown,
+  LogOut,
+  UserRound,
 } from "lucide-react";
 
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -23,6 +27,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { supabase } from "@/integrations/supabase/client";
+import { useAvatarUrl, usePerfil } from "@/lib/perfil-queries";
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -40,6 +46,17 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { data: perfil } = usePerfil();
+  const { data: avatarUrl } = useAvatarUrl(perfil?.avatar_url);
+
+  const sair = async () => {
+    await qc.cancelQueries();
+    qc.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-sidebar-border">
