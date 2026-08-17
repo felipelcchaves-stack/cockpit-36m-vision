@@ -36,14 +36,19 @@ import {
   diasAte,
   prazoLabel,
   potencial,
+  potencialLiquido,
   progresso,
   realizado,
+  realizadoLiquido,
   useAtualizarReceita,
   useCriarReceita,
   useCrmReceitas,
+  usePassivos,
   useRemoverReceita,
   type CrmReceita,
 } from "@/lib/cockpit-queries";
+import { placarFase1 } from "@/lib/financeiro";
+
 import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
@@ -271,6 +276,7 @@ type ReceitaForm = {
   ticket_medio: string;
   meta_quantidade: string;
   quantidade_realizada: string;
+  custo_operacao: string;
   status_campanha: string;
   data_ritual: string;
   data_pagamento_prevista: string;
@@ -281,6 +287,7 @@ const emptyForm: ReceitaForm = {
   ticket_medio: "",
   meta_quantidade: "",
   quantidade_realizada: "0",
+  custo_operacao: "0",
   status_campanha: "Em Captação",
   data_ritual: "",
   data_pagamento_prevista: "",
@@ -289,6 +296,7 @@ const emptyForm: ReceitaForm = {
 
 function CrmReceitasReais() {
   const { data = [], isLoading, error } = useCrmReceitas();
+  const { data: passivos = [] } = usePassivos();
   const criar = useCriarReceita();
   const atualizar = useAtualizarReceita();
   const remover = useRemoverReceita();
@@ -298,9 +306,12 @@ function CrmReceitasReais() {
   const [form, setForm] = useState<ReceitaForm>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<CrmReceita | null>(null);
 
-  const totalPotencial = data.reduce((s, r) => s + potencial(r), 0);
-  const totalRealizado = data.reduce((s, r) => s + realizado(r), 0);
+  const totalPotencial = data.reduce((s, r) => s + potencialLiquido(r), 0);
+  const totalRealizado = data.reduce((s, r) => s + realizadoLiquido(r), 0);
+  const totalBruto = data.reduce((s, r) => s + potencial(r), 0);
+  const totalCusto = data.reduce((s, r) => s + (r.custo_operacao ?? 0), 0);
   const pctGeral = totalPotencial > 0 ? Math.min(100, (totalRealizado / totalPotencial) * 100) : 0;
+  const fase1 = placarFase1(passivos, totalRealizado);
 
   const openNew = () => {
     setEditId(null);
@@ -315,6 +326,7 @@ function CrmReceitasReais() {
       ticket_medio: String(r.ticket_medio),
       meta_quantidade: String(r.meta_quantidade),
       quantidade_realizada: String(r.quantidade_realizada),
+      custo_operacao: String(r.custo_operacao ?? 0),
       status_campanha: r.status_campanha ?? "Em Captação",
       data_ritual: r.data_ritual ?? "",
       data_pagamento_prevista: r.data_pagamento_prevista ?? "",
@@ -332,10 +344,12 @@ function CrmReceitasReais() {
       ticket_medio: Number(form.ticket_medio) || 0,
       meta_quantidade: Number(form.meta_quantidade) || 0,
       quantidade_realizada: Number(form.quantidade_realizada) || 0,
+      custo_operacao: Number(form.custo_operacao) || 0,
       status_campanha: form.status_campanha,
       data_ritual: form.data_ritual || null,
       data_pagamento_prevista: form.data_pagamento_prevista || null,
     };
+
 
     try {
       if (editId === null) {
@@ -382,19 +396,24 @@ function CrmReceitasReais() {
         <div>
           <h2 className="text-base font-semibold">Catálogo de Receitas (dados reais)</h2>
           <p className="text-xs text-muted-foreground">
-            Potencial = meta de quantidade x ticket médio de cada produto.
+            Potencial líquido = meta x ticket médio, menos o custo de operação da campanha.
           </p>
         </div>
         <div className="flex items-end gap-5">
           <div className="text-right">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Realizado</p>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Líquido realizado
+            </p>
             <p className="num text-lg font-semibold text-liquidity">{brl(totalRealizado)}</p>
           </div>
           <div className="text-right">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              Potencial total
+              Potencial líquido
             </p>
             <p className="num text-2xl font-semibold gold-text">{brl(totalPotencial)}</p>
+            <p className="num text-[11px] text-muted-foreground">
+              bruto {brl(totalBruto)} · custo {brl(totalCusto)}
+            </p>
           </div>
           <Button variant="secondary" className="gap-2" onClick={openNew}>
             <Plus className="size-4" /> Novo produto
@@ -404,17 +423,55 @@ function CrmReceitasReais() {
 
       <div className="mt-4">
         <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>Avanço geral da meta</span>
+          <span>Avanço geral da meta (líquido)</span>
           <span className="num">{pctGeral.toFixed(1)}%</span>
         </div>
         <Progress value={pctGeral} className="mt-2 h-2" />
+      </div>
+
+      <div className="mt-5 rounded-xl border border-debt/25 bg-debt/5 p-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Placar da Fase 1 — Ofensiva Sazonal
+            </p>
+            <h3 className="text-sm font-semibold">
+              Agiota + Oluwo precisam morrer antes do Dia D
+            </h3>
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Falta vender (líquido)
+            </p>
+            <p className="num text-2xl font-semibold text-debt">{brl(fase1.falta)}</p>
+          </div>
+        </div>
+        <Progress value={fase1.pct} className="mt-3 h-2" />
+        <p className="num mt-2 text-[11px] text-muted-foreground">
+          Em aberto {brl(fase1.emAberto)} · líquido já capturado {brl(fase1.liquidoJaPago)} ·{" "}
+          {fase1.pct.toFixed(1)}% do alvo
+        </p>
+        {fase1.falta > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {data
+              .filter((r) => r.ticket_medio > 0)
+              .map((r) => (
+                <span
+                  key={r.id}
+                  className="rounded-full border border-border bg-secondary/60 px-2.5 py-1 text-[11px] text-muted-foreground"
+                >
+                  {Math.ceil(fase1.falta / r.ticket_medio)}x {r.produto}
+                </span>
+              ))}
+          </div>
+        )}
       </div>
 
       {error && <p className="mt-4 text-sm text-debt">Não foi possível carregar as receitas.</p>}
       {isLoading && <p className="mt-4 text-sm text-muted-foreground">Carregando receitas...</p>}
 
       <div className="mt-5 overflow-x-auto">
-        <table className="w-full min-w-[1020px] text-sm">
+        <table className="w-full min-w-[1120px] text-sm">
           <thead>
             <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
               <th className="pb-3 font-medium">Produto</th>
@@ -423,10 +480,12 @@ function CrmReceitasReais() {
               <th className="pb-3 font-medium">Progresso</th>
               <th className="pb-3 text-right font-medium">Ticket médio</th>
               <th className="pb-3 text-right font-medium">Meta</th>
-              <th className="pb-3 text-right font-medium">Potencial</th>
+              <th className="pb-3 text-right font-medium">Custo op.</th>
+              <th className="pb-3 text-right font-medium">Líquido</th>
               <th className="pb-3 text-right font-medium">Ações</th>
             </tr>
           </thead>
+
           <tbody>
             {data.map((r) => (
               <tr key={r.id} className="border-t border-border/60">
@@ -470,9 +529,18 @@ function CrmReceitasReais() {
                 </td>
                 <td className="num py-3 text-right text-muted-foreground">{brl(r.ticket_medio)}</td>
                 <td className="num py-3 text-right text-muted-foreground">{r.meta_quantidade}x</td>
-                <td className="num py-3 text-right font-semibold text-liquidity">
-                  {brl(potencial(r))}
+                <td className="num py-3 text-right text-debt">
+                  {r.custo_operacao > 0 ? `-${brl(r.custo_operacao)}` : "—"}
                 </td>
+                <td className="num py-3 text-right font-semibold text-liquidity">
+                  {brl(potencialLiquido(r))}
+                  {r.custo_operacao > 0 && (
+                    <span className="block text-[10px] font-normal text-muted-foreground">
+                      bruto {brl(potencial(r))}
+                    </span>
+                  )}
+                </td>
+
                 <td className="py-3">
                   <div className="flex items-center justify-end gap-1">
                     <Button
@@ -539,15 +607,27 @@ function CrmReceitasReais() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="feito">Quantidade já realizada</Label>
-              <Input
-                id="feito"
-                inputMode="numeric"
-                value={form.quantidade_realizada}
-                onChange={(e) => setForm({ ...form, quantidade_realizada: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="feito">Quantidade já realizada</Label>
+                <Input
+                  id="feito"
+                  inputMode="numeric"
+                  value={form.quantidade_realizada}
+                  onChange={(e) => setForm({ ...form, quantidade_realizada: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="custo">Custo de operação (R$)</Label>
+                <Input
+                  id="custo"
+                  inputMode="numeric"
+                  value={form.custo_operacao}
+                  onChange={(e) => setForm({ ...form, custo_operacao: e.target.value })}
+                />
+              </div>
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="dr">Data do ritual</Label>

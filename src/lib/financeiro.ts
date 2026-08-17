@@ -150,3 +150,84 @@ export const poderDeFogoLiquido = (ativos: Ativo[]) =>
 
 export const cofreBlindado = (ativos: Ativo[]) =>
   ativos.filter(isReservaBlindada).reduce((s, a) => s + a.valor, 0);
+
+/* ---------------- Fase 1: placar de fechamento ---------------- */
+
+/** Agiota + Oluwo: o que precisa morrer antes do Dia D. */
+export function placarFase1(passivos: Passivo[], liquidoJaPago: number) {
+  const alvos = passivos.filter((p) =>
+    ["agiota", "oluwo"].some((t) => p.credor.toLowerCase().includes(t)),
+  );
+  const emAberto = alvos.filter((p) => !isPago(p.status)).reduce((s, p) => s + p.saldo_devedor, 0);
+  const total = alvos.reduce((s, p) => s + p.saldo_devedor, 0) || 352_500;
+  const falta = Math.max(0, emAberto - liquidoJaPago);
+  return {
+    total,
+    emAberto,
+    liquidoJaPago,
+    falta,
+    pct: emAberto > 0 ? Math.min(100, (liquidoJaPago / emAberto) * 100) : 100,
+  };
+}
+
+/* ---------------- Ponte de 90 dias e Virada de Chave ---------------- */
+
+export type ParametrosFluxo = {
+  obra_mensal: number;
+  aluguel_potiguara: number;
+  faturamento_base: number;
+  obra_meses_restantes: number;
+  potiguara_meses_restantes: number;
+};
+
+export type MesFluxo = {
+  mes: number;
+  rotulo: string;
+  entradas: number;
+  obra: number;
+  potiguara: number;
+  saidas: number;
+  livre: number;
+  marcos: string[];
+};
+
+/** Fase 4: 3 meses de ponte com obra (22k) e Potiguara (10k) saindo do caixa. */
+export function pontede90Dias(p: ParametrosFluxo, meses = 3): MesFluxo[] {
+  const nomes = ["Mês 1", "Mês 2", "Mês 3", "Mês 4", "Mês 5", "Mês 6"];
+  const out: MesFluxo[] = [];
+  for (let i = 0; i < meses; i++) {
+    const obra = i < p.obra_meses_restantes ? p.obra_mensal : 0;
+    const potiguara = i < p.potiguara_meses_restantes ? p.aluguel_potiguara : 0;
+    const marcos: string[] = [];
+    if (i === p.obra_meses_restantes) marcos.push("Fim da obra");
+    if (i === p.potiguara_meses_restantes) marcos.push("Devolução da Potiguara");
+    out.push({
+      mes: i + 1,
+      rotulo: nomes[i] ?? `Mês ${i + 1}`,
+      entradas: p.faturamento_base,
+      obra,
+      potiguara,
+      saidas: obra + potiguara,
+      livre: p.faturamento_base - obra - potiguara,
+      marcos,
+    });
+  }
+  return out;
+}
+
+/** Fase 5: fim da obra + devolução da Potiguara destravam caixa para o aporte. */
+export function viradaDeChave(p: ParametrosFluxo) {
+  const destravado = p.obra_mensal + p.aluguel_potiguara;
+  const livreHoje = p.faturamento_base - destravado;
+  const livreDepois = p.faturamento_base;
+  return {
+    destravado,
+    livreHoje,
+    livreDepois,
+    cobreAporte: livreDepois >= APORTE_MENSAL,
+    folga: livreDepois - APORTE_MENSAL,
+  };
+}
+
+/** Renda passiva que o patrimônio atual já geraria (0,5% a.m.). */
+export const rendaPassivaAtual = (patrimonio: number) => Math.max(0, patrimonio) * RETIRADA_SEGURA;

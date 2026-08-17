@@ -25,6 +25,7 @@ export type CrmReceita = {
   ticket_medio: number;
   meta_quantidade: number;
   quantidade_realizada: number;
+  custo_operacao: number;
   status_campanha: string | null;
   data_ritual: string | null;
   data_pagamento_prevista: string | null;
@@ -35,10 +36,12 @@ export type CrmReceitaInput = {
   ticket_medio: number;
   meta_quantidade: number;
   quantidade_realizada: number;
+  custo_operacao: number;
   status_campanha: string | null;
   data_ritual: string | null;
   data_pagamento_prevista: string | null;
 };
+
 
 
 const num = (v: unknown) => Number(v ?? 0);
@@ -80,7 +83,7 @@ export const crmReceitasQuery = queryOptions({
     const { data, error } = await supabase
       .from("crm_receitas")
       .select(
-        "id, produto, ticket_medio, meta_quantidade, quantidade_realizada, status_campanha, data_ritual, data_pagamento_prevista",
+        "id, produto, ticket_medio, meta_quantidade, quantidade_realizada, custo_operacao, status_campanha, data_ritual, data_pagamento_prevista",
       )
       .order("id");
     if (error) throw error;
@@ -89,9 +92,11 @@ export const crmReceitasQuery = queryOptions({
       ticket_medio: num(r.ticket_medio),
       meta_quantidade: num(r.meta_quantidade),
       quantidade_realizada: num((r as { quantidade_realizada?: number }).quantidade_realizada),
+      custo_operacao: num((r as { custo_operacao?: number }).custo_operacao),
     }));
   },
 });
+
 
 export const usePassivos = () => useQuery(passivosQuery);
 export const useAtivos = () => useQuery(ativosQuery);
@@ -490,3 +495,140 @@ export const prazoLabel = (iso: string | null) => {
 export const dataBR = (iso: string | null) =>
   iso ? new Date(`${iso}T00:00:00`).toLocaleDateString("pt-BR") : "—";
 
+
+/* ---------------- Líquido de campanha (custo de operação) ---------------- */
+
+/** Potencial líquido: meta x ticket menos o custo de operação da campanha. */
+export const potencialLiquido = (r: CrmReceita) =>
+  Math.max(0, potencial(r) - (r.custo_operacao ?? 0));
+
+/** Líquido já realizado: proporcional às vendas feitas, descontando o custo. */
+export const realizadoLiquido = (r: CrmReceita) => {
+  const prop = r.meta_quantidade > 0 ? Math.min(1, r.quantidade_realizada / r.meta_quantidade) : 0;
+  return Math.max(0, realizado(r) - (r.custo_operacao ?? 0) * prop);
+};
+
+/* ---------------- Aportes mensais (governança dos R$ 70k) ---------------- */
+
+export type AporteMensal = {
+  id: string;
+  competencia: string;
+  previsto: number;
+  realizado: number;
+  nota: string | null;
+};
+
+export const aportesQuery = queryOptions({
+  queryKey: ["aportes_mensais"],
+  queryFn: async (): Promise<AporteMensal[]> => {
+    const { data, error } = await supabase
+      .from("aportes_mensais")
+      .select("id, competencia, previsto, realizado, nota")
+      .order("competencia", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((r) => ({
+      ...r,
+      previsto: num(r.previsto),
+      realizado: num(r.realizado),
+    }));
+  },
+});
+
+export const useAportes = () => useQuery(aportesQuery);
+
+const invalidateAportes = (qc: ReturnType<typeof useQueryClient>) =>
+  void qc.invalidateQueries({ queryKey: ["aportes_mensais"] });
+
+export function useSalvarAporte() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      competencia: string;
+      previsto: number;
+      realizado: number;
+      nota?: string | null;
+    }) => {
+      const { error } = await supabase
+        .from("aportes_mensais")
+        .upsert(input, { onConflict: "competencia" });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateAportes(qc),
+  });
+}
+
+export function useRemoverAporte() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("aportes_mensais").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateAportes(qc),
+  });
+}
+
+/** Meses seguidos (do mais recente para trás) em que o aporte foi cumprido. */
+export const sequenciaDisciplina = (rows: AporteMensal[] = []) => {
+  const ordenado = [...rows].sort((a, b) => b.competencia.localeCompare(a.competencia));
+  let n = 0;
+  for (const r of ordenado) {
+    if (r.realizado >= r.previsto && r.previsto > 0) n++;
+    else break;
+  }
+  return n;
+};
+
+/* ---------------- Parâmetros mensais (obra, Potiguara, cartão) ---------------- */
+
+export type ParametrosMensais = {
+  id: string;
+  obra_mensal: number;
+  aluguel_potiguara: number;
+  faturamento_base: number;
+  fatura_cartao: number;
+  receita_livre_mes: number;
+  obra_meses_restantes: number;
+  potiguara_meses_restantes: number;
+};
+
+export const parametrosQuery = queryOptions({
+  queryKey: ["parametros_mensais"],
+  queryFn: async (): Promise<ParametrosMensais | null> => {
+    const { data, error } = await supabase
+      .from("parametros_mensais")
+      .select(
+        "id, obra_mensal, aluguel_potiguara, faturamento_base, fatura_cartao, receita_livre_mes, obra_meses_restantes, potiguara_meses_restantes",
+      )
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      id: data.id,
+      obra_mensal: num(data.obra_mensal),
+      aluguel_potiguara: num(data.aluguel_potiguara),
+      faturamento_base: num(data.faturamento_base),
+      fatura_cartao: num(data.fatura_cartao),
+      receita_livre_mes: num(data.receita_livre_mes),
+      obra_meses_restantes: num(data.obra_meses_restantes),
+      potiguara_meses_restantes: num(data.potiguara_meses_restantes),
+    };
+  },
+});
+
+export const useParametros = () => useQuery(parametrosQuery);
+
+export function useSalvarParametros() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: Partial<ParametrosMensais> & { id: string }) => {
+      const { error } = await supabase.from("parametros_mensais").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["parametros_mensais"] });
+    },
+  });
+}

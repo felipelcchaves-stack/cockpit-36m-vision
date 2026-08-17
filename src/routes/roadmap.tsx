@@ -36,9 +36,12 @@ import {
   useCriarTarefa,
   useRemoverTarefa,
   useRoadmap,
+  useParametros,
+  useSalvarParametros,
   type RoadmapFase,
   type RoadmapTarefa,
 } from "@/lib/cockpit-queries";
+import { pontede90Dias, viradaDeChave } from "@/lib/financeiro";
 
 export const Route = createFileRoute("/roadmap")({
   head: () => ({
@@ -237,6 +240,10 @@ function Roadmap() {
         </div>
       </div>
 
+      <PonteVirada />
+
+
+
       <div className="relative pl-8 sm:pl-12">
         <div className="absolute left-3 top-2 bottom-2 w-px bg-gradient-to-b from-liquidity via-gold to-border sm:left-5" />
         <div className="space-y-6">
@@ -414,6 +421,210 @@ function Roadmap() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+/* ---------------- Fase 4 e 5: Ponte de 90 dias e Virada de Chave ---------------- */
+
+function PonteVirada() {
+  const { data: parametros } = useParametros();
+  const salvar = useSalvarParametros();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    obra_mensal: "",
+    aluguel_potiguara: "",
+    faturamento_base: "",
+    obra_meses_restantes: "",
+    potiguara_meses_restantes: "",
+  });
+
+  const p = {
+    obra_mensal: parametros?.obra_mensal ?? 22000,
+    aluguel_potiguara: parametros?.aluguel_potiguara ?? 10000,
+    faturamento_base: parametros?.faturamento_base ?? 67500,
+    obra_meses_restantes: parametros?.obra_meses_restantes ?? 3,
+    potiguara_meses_restantes: parametros?.potiguara_meses_restantes ?? 3,
+  };
+
+  const meses = pontede90Dias(p, 4);
+  const virada = viradaDeChave(p);
+
+  const openSheet = () => {
+    setForm({
+      obra_mensal: String(p.obra_mensal),
+      aluguel_potiguara: String(p.aluguel_potiguara),
+      faturamento_base: String(p.faturamento_base),
+      obra_meses_restantes: String(p.obra_meses_restantes),
+      potiguara_meses_restantes: String(p.potiguara_meses_restantes),
+    });
+    setOpen(true);
+  };
+
+  const salvarForm = async () => {
+    if (!parametros) {
+      toast.error("Parâmetros ainda não carregados");
+      return;
+    }
+    try {
+      await salvar.mutateAsync({
+        id: parametros.id,
+        obra_mensal: Number(form.obra_mensal) || 0,
+        aluguel_potiguara: Number(form.aluguel_potiguara) || 0,
+        faturamento_base: Number(form.faturamento_base) || 0,
+        obra_meses_restantes: Number(form.obra_meses_restantes) || 0,
+        potiguara_meses_restantes: Number(form.potiguara_meses_restantes) || 0,
+      });
+      toast.success("Parâmetros atualizados");
+      setOpen(false);
+    } catch {
+      toast.error("Não foi possível salvar");
+    }
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-3">
+      <div className="glass-card rounded-2xl p-5 lg:col-span-2">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Fase 4 — Ponte de 90 dias</h2>
+            <p className="text-xs text-muted-foreground">
+              Faturamento base contra obra e aluguel da Potiguara, mês a mês, sem dívidas.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={openSheet}>
+            Ajustar parâmetros
+          </Button>
+        </div>
+
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                <th className="pb-3 font-medium">Mês</th>
+                <th className="pb-3 text-right font-medium">Entradas</th>
+                <th className="pb-3 text-right font-medium">Obra</th>
+                <th className="pb-3 text-right font-medium">Potiguara</th>
+                <th className="pb-3 text-right font-medium">Caixa livre</th>
+              </tr>
+            </thead>
+            <tbody>
+              {meses.map((m) => (
+                <tr key={m.mes} className="border-t border-border/60">
+                  <td className="py-3">
+                    {m.rotulo}
+                    {m.marcos.length > 0 && (
+                      <span className="ml-2 rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-[10px] text-gold">
+                        {m.marcos.join(" · ")}
+                      </span>
+                    )}
+                  </td>
+                  <td className="num py-3 text-right text-liquidity">{brl(m.entradas)}</td>
+                  <td className="num py-3 text-right text-debt">
+                    {m.obra > 0 ? `-${brl(m.obra)}` : "—"}
+                  </td>
+                  <td className="num py-3 text-right text-debt">
+                    {m.potiguara > 0 ? `-${brl(m.potiguara)}` : "—"}
+                  </td>
+                  <td className="num py-3 text-right font-semibold">{brl(m.livre)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-gold/25 bg-gold/[0.06] p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-gold">
+          Fase 5 — Virada de Chave
+        </h2>
+        <p className="num mt-3 text-2xl font-semibold gold-text">+{brl(virada.destravado)}</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          destravados por mês com o fim da obra e a devolução da Potiguara.
+        </p>
+        <div className="mt-4 space-y-2 text-xs">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Caixa livre hoje</span>
+            <span className="num">{brl(virada.livreHoje)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Caixa livre pós-virada</span>
+            <span className="num text-liquidity">{brl(virada.livreDepois)}</span>
+          </div>
+          <div className="flex justify-between border-t border-border/60 pt-2">
+            <span className="text-muted-foreground">Folga sobre o aporte de 70k</span>
+            <span className={`num ${virada.folga >= 0 ? "text-liquidity" : "text-debt"}`}>
+              {brl(virada.folga)}
+            </span>
+          </div>
+        </div>
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          {virada.cobreAporte
+            ? "O faturamento base já sustenta os R$ 70.000/mês rumo aos 36M."
+            : "Ainda falta caixa para os R$ 70.000/mês — aumente o faturamento antes da demissão."}
+        </p>
+      </div>
+
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Parâmetros do fluxo mensal</SheetTitle>
+            <SheetDescription>Usados na Ponte de 90 dias e na Virada de Chave.</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-4 px-4">
+            <div className="space-y-2">
+              <Label htmlFor="obra">Obra por mês (R$)</Label>
+              <Input
+                id="obra"
+                inputMode="numeric"
+                value={form.obra_mensal}
+                onChange={(e) => setForm({ ...form, obra_mensal: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pot">Aluguel Potiguara (R$)</Label>
+              <Input
+                id="pot"
+                inputMode="numeric"
+                value={form.aluguel_potiguara}
+                onChange={(e) => setForm({ ...form, aluguel_potiguara: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fat">Faturamento base (R$/mês)</Label>
+              <Input
+                id="fat"
+                inputMode="numeric"
+                value={form.faturamento_base}
+                onChange={(e) => setForm({ ...form, faturamento_base: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="mo">Meses de obra restantes</Label>
+                <Input
+                  id="mo"
+                  inputMode="numeric"
+                  value={form.obra_meses_restantes}
+                  onChange={(e) => setForm({ ...form, obra_meses_restantes: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mp">Meses de Potiguara</Label>
+                <Input
+                  id="mp"
+                  inputMode="numeric"
+                  value={form.potiguara_meses_restantes}
+                  onChange={(e) => setForm({ ...form, potiguara_meses_restantes: e.target.value })}
+                />
+              </div>
+            </div>
+            <Button className="w-full" onClick={() => void salvarForm()} disabled={salvar.isPending}>
+              Salvar parâmetros
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

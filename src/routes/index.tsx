@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { motion } from "motion/react";
+
 import {
   Area,
   AreaChart,
@@ -15,6 +20,8 @@ import {
   CreditCard,
   Flame,
   Lock,
+  PiggyBank,
+
   Sparkles,
   Target,
   Wallet,
@@ -29,20 +36,28 @@ import {
   potencial,
   progresso,
   realizado,
+  sequenciaDisciplina,
   sumPassivos,
   sumPoderDeFogo,
+  useAportes,
   useAtivos,
   useCrmReceitas,
+  useParametros,
   usePassivos,
+  useSalvarAporte,
 } from "@/lib/cockpit-queries";
 import {
+  APORTE_MENSAL,
   FATURA_CARTAO,
   META_PATRIMONIO,
+  RENDA_PASSIVA_ALVO,
   alertaCartao,
   cofreBlindado,
   cruzamentoMeta,
   projetar36M,
+  rendaPassivaAtual,
 } from "@/lib/financeiro";
+
 
 import { Progress } from "@/components/ui/progress";
 
@@ -70,6 +85,8 @@ function Dashboard() {
   const { data: passivosRows = [], isLoading: loadingPassivos } = usePassivos();
   const { data: ativosRows = [], isLoading: loadingAtivos } = useAtivos();
   const { data: receitas = [] } = useCrmReceitas();
+  const { data: parametros } = useParametros();
+  const { data: aportes = [] } = useAportes();
 
   const totalDebt = sumPassivos(passivosRows);
   const liquidity = sumPoderDeFogo(ativosRows);
@@ -79,7 +96,17 @@ function Dashboard() {
   const reserva = cofreBlindado(ativosRows);
   const projecao = projetar36M(Math.max(0, freeSurplus));
   const cruzamento = cruzamentoMeta(projecao);
-  const cartao = alertaCartao(FATURA_CARTAO, Math.max(0, freeSurplus));
+  const faturaAtual = parametros?.fatura_cartao ?? FATURA_CARTAO;
+  const receitaLivreMes = parametros?.receita_livre_mes ?? Math.max(0, freeSurplus);
+  const cartao = alertaCartao(faturaAtual, receitaLivreMes);
+  const rendaHoje = rendaPassivaAtual(Math.max(0, freeSurplus));
+  const pctRenda = Math.min(100, (rendaHoje / RENDA_PASSIVA_ALVO) * 100);
+
+  const competencia = `${new Date().toISOString().slice(0, 7)}-01`;
+  const aporteMes = aportes.find((a) => a.competencia === competencia);
+  const disciplina = sequenciaDisciplina(aportes);
+
+
 
 
   const paidCreditors = creditors.filter((c) => c.balance === 0).length;
@@ -206,7 +233,7 @@ function Dashboard() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -240,11 +267,39 @@ function Dashboard() {
           <p className="num mt-3 text-2xl font-semibold">{brl(cartao.faturaProjetada)}</p>
           <p className="mt-2 text-[11px] text-muted-foreground">
             {cartao.excede
-              ? `Fatura projetada supera a receita livre em ${brl(cartao.gap)}. Corte gasto agora — zero rotativo, zero parcelamento.`
-              : "Fatura dentro da receita livre do mês. Pagamento integral antes do vencimento."}
+              ? `Fatura projetada supera a receita livre (${brl(cartao.receitaLivre)}) em ${brl(cartao.gap)}. Sem caixa para pagar à vista, a compra não é feita — zero rotativo, zero parcelamento.`
+              : `Dentro da receita livre do mês (${brl(cartao.receitaLivre)}). Pagamento integral antes do vencimento.`}
           </p>
         </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.28 }}
+          className="rounded-2xl border border-gold/25 bg-card/40 p-5"
+        >
+          <div className="flex items-center gap-2 text-gold">
+            <Target className="size-4" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider">Renda Passiva</h2>
+          </div>
+          <p className="num mt-3 text-2xl font-semibold gold-text">
+            {brl(RENDA_PASSIVA_ALVO)}
+            <span className="text-sm font-normal text-muted-foreground">/mês alvo</span>
+          </p>
+          <Progress value={pctRenda} className="mt-3 h-1.5 bg-secondary" />
+          <p className="num mt-2 text-[11px] text-muted-foreground">
+            Hoje o lastro geraria {brl(rendaHoje)}/mês a 0,5% a.m. ({pctRenda.toFixed(1)}% do alvo).
+          </p>
+        </motion.div>
+
+        <AporteCard
+          competencia={competencia}
+          realizado={aporteMes?.realizado ?? 0}
+          disciplina={disciplina}
+        />
       </div>
+
+
 
 
 
@@ -475,5 +530,74 @@ function Dashboard() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+function AporteCard({
+  competencia,
+  realizado,
+  disciplina,
+}: {
+  competencia: string;
+  realizado: number;
+  disciplina: number;
+}) {
+  const salvar = useSalvarAporte();
+  const [valor, setValor] = useState(String(realizado || ""));
+
+  useEffect(() => {
+    setValor(String(realizado || ""));
+  }, [realizado]);
+
+  const pct = Math.min(100, (realizado / APORTE_MENSAL) * 100);
+
+  const registrar = async () => {
+    try {
+      await salvar.mutateAsync({
+        competencia,
+        previsto: APORTE_MENSAL,
+        realizado: Number(valor) || 0,
+      });
+      toast.success("Aporte do mês registrado");
+    } catch {
+      toast.error("Não foi possível registrar o aporte");
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.32 }}
+      className="rounded-2xl border border-liquidity/25 bg-card/40 p-5"
+    >
+      <div className="flex items-center gap-2 text-liquidity">
+        <PiggyBank className="size-4" />
+        <h2 className="text-sm font-semibold uppercase tracking-wider">Aporte do mês</h2>
+      </div>
+      <p className="num mt-3 text-2xl font-semibold">
+        {brl(realizado)}
+        <span className="text-sm font-normal text-muted-foreground">/{brl(APORTE_MENSAL)}</span>
+      </p>
+      <Progress value={pct} className="mt-3 h-1.5 bg-secondary" />
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        {disciplina > 0
+          ? `${disciplina} ${disciplina === 1 ? "mês" : "meses"} seguidos cumprindo a governança.`
+          : "Governança pendente — R$ 70.000 religiosamente, todo mês."}
+      </p>
+      <div className="mt-3 flex gap-2">
+        <Input
+          inputMode="numeric"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          placeholder="70000"
+          className="h-8 text-xs"
+          aria-label="Valor aportado no mês"
+        />
+        <Button size="sm" className="h-8" onClick={() => void registrar()} disabled={salvar.isPending}>
+          Registrar
+        </Button>
+      </div>
+    </motion.div>
   );
 }
