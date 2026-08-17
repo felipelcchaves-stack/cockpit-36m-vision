@@ -70,7 +70,9 @@ export const crmReceitasQuery = queryOptions({
   queryFn: async (): Promise<CrmReceita[]> => {
     const { data, error } = await supabase
       .from("crm_receitas")
-      .select("id, produto, ticket_medio, meta_quantidade, quantidade_realizada, status_campanha")
+      .select(
+        "id, produto, ticket_medio, meta_quantidade, quantidade_realizada, status_campanha, data_ritual, data_pagamento_prevista",
+      )
       .order("id");
     if (error) throw error;
     return (data ?? []).map((r) => ({
