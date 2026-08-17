@@ -22,6 +22,15 @@ export type CrmReceita = {
   produto: string;
   ticket_medio: number;
   meta_quantidade: number;
+  quantidade_realizada: number;
+  status_campanha: string | null;
+};
+
+export type CrmReceitaInput = {
+  produto: string;
+  ticket_medio: number;
+  meta_quantidade: number;
+  quantidade_realizada: number;
   status_campanha: string | null;
 };
 
