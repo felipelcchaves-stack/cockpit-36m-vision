@@ -26,6 +26,7 @@ import {
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Entradas/Rituais", url: "/entradas", icon: Users },
+  { title: "Ofensiva → Dia D", url: "/ofensiva", icon: Crosshair },
   { title: "Passivos/Credores", url: "/passivos", icon: Target },
   { title: "Operação Dia D", url: "/dia-d", icon: Bomb },
   { title: "Roadmap Dia D", url: "/roadmap", icon: RouteIcon },
