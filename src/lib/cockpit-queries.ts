@@ -772,6 +772,39 @@ export function useAjustarSaldoAtivo() {
 }
 
 /** Debita um valor do ativo (saque para amortizar passivo, por exemplo). */
+export function useCreditarAtivo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      ativo,
+      valor,
+      motivo,
+    }: {
+      ativo: Ativo;
+      valor: number;
+      motivo: string;
+    }) => {
+      const hoje = new Date().toISOString().slice(0, 10);
+      const saldoFinal = ativo.valor + valor;
+      const { error: errIns } = await supabase.from("rendimentos").insert({
+        ativo_id: ativo.id,
+        data: hoje,
+        saldo_anterior: ativo.valor,
+        juros: valor,
+        saldo_final: saldoFinal,
+        origem: `entrada:${motivo}`.slice(0, 120),
+      });
+      if (errIns) throw errIns;
+      const { error } = await supabase
+        .from("ativos")
+        .update({ valor: saldoFinal })
+        .eq("id", ativo.id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateLastro(qc),
+  });
+}
+
 export function useDebitarAtivo() {
   const qc = useQueryClient();
   return useMutation({
