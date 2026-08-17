@@ -9,91 +9,90 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ComandoRouteImport } from './routes/comando'
-import { Route as DiaDRouteImport } from './routes/dia-d'
-import { Route as EntradasRouteImport } from './routes/entradas'
-import { Route as HistoricoRouteImport } from './routes/historico'
-import { Route as OfensivaRouteImport } from './routes/ofensiva'
-import { Route as PassivosRouteImport } from './routes/passivos'
-import { Route as RoadmapRouteImport } from './routes/roadmap'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedComandoRouteImport } from './routes/_authenticated/comando'
+import { Route as AuthenticatedDiaDRouteImport } from './routes/_authenticated/dia-d'
+import { Route as AuthenticatedEntradasRouteImport } from './routes/_authenticated/entradas'
+import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authenticated/historico'
+import { Route as AuthenticatedOfensivaRouteImport } from './routes/_authenticated/ofensiva'
+import { Route as AuthenticatedPassivosRouteImport } from './routes/_authenticated/passivos'
+import { Route as AuthenticatedRoadmapRouteImport } from './routes/_authenticated/roadmap'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+  id: '/_authenticated/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ComandoRoute = ComandoRouteImport.update({
-  id: '/comando',
+const AuthenticatedComandoRoute = AuthenticatedComandoRouteImport.update({
+  id: '/_authenticated/comando',
   path: '/comando',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DiaDRoute = DiaDRouteImport.update({
-  id: '/dia-d',
+const AuthenticatedDiaDRoute = AuthenticatedDiaDRouteImport.update({
+  id: '/_authenticated/dia-d',
   path: '/dia-d',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EntradasRoute = EntradasRouteImport.update({
-  id: '/entradas',
+const AuthenticatedEntradasRoute = AuthenticatedEntradasRouteImport.update({
+  id: '/_authenticated/entradas',
   path: '/entradas',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HistoricoRoute = HistoricoRouteImport.update({
-  id: '/historico',
+const AuthenticatedHistoricoRoute = AuthenticatedHistoricoRouteImport.update({
+  id: '/_authenticated/historico',
   path: '/historico',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OfensivaRoute = OfensivaRouteImport.update({
-  id: '/ofensiva',
+const AuthenticatedOfensivaRoute = AuthenticatedOfensivaRouteImport.update({
+  id: '/_authenticated/ofensiva',
   path: '/ofensiva',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PassivosRoute = PassivosRouteImport.update({
-  id: '/passivos',
+const AuthenticatedPassivosRoute = AuthenticatedPassivosRouteImport.update({
+  id: '/_authenticated/passivos',
   path: '/passivos',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RoadmapRoute = RoadmapRouteImport.update({
-  id: '/roadmap',
+const AuthenticatedRoadmapRoute = AuthenticatedRoadmapRouteImport.update({
+  id: '/_authenticated/roadmap',
   path: '/roadmap',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/comando': typeof ComandoRoute
-  '/dia-d': typeof DiaDRoute
-  '/entradas': typeof EntradasRoute
-  '/historico': typeof HistoricoRoute
-  '/ofensiva': typeof OfensivaRoute
-  '/passivos': typeof PassivosRoute
-  '/roadmap': typeof RoadmapRoute
+  '/comando': typeof AuthenticatedComandoRoute
+  '/dia-d': typeof AuthenticatedDiaDRoute
+  '/entradas': typeof AuthenticatedEntradasRoute
+  '/historico': typeof AuthenticatedHistoricoRoute
+  '/ofensiva': typeof AuthenticatedOfensivaRoute
+  '/passivos': typeof AuthenticatedPassivosRoute
+  '/roadmap': typeof AuthenticatedRoadmapRoute
+  '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/comando': typeof ComandoRoute
-  '/dia-d': typeof DiaDRoute
-  '/entradas': typeof EntradasRoute
-  '/historico': typeof HistoricoRoute
-  '/ofensiva': typeof OfensivaRoute
-  '/passivos': typeof PassivosRoute
-  '/roadmap': typeof RoadmapRoute
+  '/comando': typeof AuthenticatedComandoRoute
+  '/dia-d': typeof AuthenticatedDiaDRoute
+  '/entradas': typeof AuthenticatedEntradasRoute
+  '/historico': typeof AuthenticatedHistoricoRoute
+  '/ofensiva': typeof AuthenticatedOfensivaRoute
+  '/passivos': typeof AuthenticatedPassivosRoute
+  '/roadmap': typeof AuthenticatedRoadmapRoute
+  '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/comando': typeof ComandoRoute
-  '/dia-d': typeof DiaDRoute
-  '/entradas': typeof EntradasRoute
-  '/historico': typeof HistoricoRoute
-  '/ofensiva': typeof OfensivaRoute
-  '/passivos': typeof PassivosRoute
-  '/roadmap': typeof RoadmapRoute
+  '/_authenticated/comando': typeof AuthenticatedComandoRoute
+  '/_authenticated/dia-d': typeof AuthenticatedDiaDRoute
+  '/_authenticated/entradas': typeof AuthenticatedEntradasRoute
+  '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
+  '/_authenticated/ofensiva': typeof AuthenticatedOfensivaRoute
+  '/_authenticated/passivos': typeof AuthenticatedPassivosRoute
+  '/_authenticated/roadmap': typeof AuthenticatedRoadmapRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/comando'
     | '/dia-d'
     | '/entradas'
@@ -101,9 +100,9 @@ export interface FileRouteTypes {
     | '/ofensiva'
     | '/passivos'
     | '/roadmap'
+    | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/comando'
     | '/dia-d'
     | '/entradas'
@@ -111,99 +110,100 @@ export interface FileRouteTypes {
     | '/ofensiva'
     | '/passivos'
     | '/roadmap'
+    | '/'
   id:
     | '__root__'
-    | '/'
-    | '/comando'
-    | '/dia-d'
-    | '/entradas'
-    | '/historico'
-    | '/ofensiva'
-    | '/passivos'
-    | '/roadmap'
+    | '/_authenticated/comando'
+    | '/_authenticated/dia-d'
+    | '/_authenticated/entradas'
+    | '/_authenticated/historico'
+    | '/_authenticated/ofensiva'
+    | '/_authenticated/passivos'
+    | '/_authenticated/roadmap'
+    | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  ComandoRoute: typeof ComandoRoute
-  DiaDRoute: typeof DiaDRoute
-  EntradasRoute: typeof EntradasRoute
-  HistoricoRoute: typeof HistoricoRoute
-  OfensivaRoute: typeof OfensivaRoute
-  PassivosRoute: typeof PassivosRoute
-  RoadmapRoute: typeof RoadmapRoute
+  AuthenticatedComandoRoute: typeof AuthenticatedComandoRoute
+  AuthenticatedDiaDRoute: typeof AuthenticatedDiaDRoute
+  AuthenticatedEntradasRoute: typeof AuthenticatedEntradasRoute
+  AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
+  AuthenticatedOfensivaRoute: typeof AuthenticatedOfensivaRoute
+  AuthenticatedPassivosRoute: typeof AuthenticatedPassivosRoute
+  AuthenticatedRoadmapRoute: typeof AuthenticatedRoadmapRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/comando': {
-      id: '/comando'
+    '/_authenticated/comando': {
+      id: '/_authenticated/comando'
       path: '/comando'
       fullPath: '/comando'
-      preLoaderRoute: typeof ComandoRouteImport
+      preLoaderRoute: typeof AuthenticatedComandoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dia-d': {
-      id: '/dia-d'
+    '/_authenticated/dia-d': {
+      id: '/_authenticated/dia-d'
       path: '/dia-d'
       fullPath: '/dia-d'
-      preLoaderRoute: typeof DiaDRouteImport
+      preLoaderRoute: typeof AuthenticatedDiaDRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/entradas': {
-      id: '/entradas'
+    '/_authenticated/entradas': {
+      id: '/_authenticated/entradas'
       path: '/entradas'
       fullPath: '/entradas'
-      preLoaderRoute: typeof EntradasRouteImport
+      preLoaderRoute: typeof AuthenticatedEntradasRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/historico': {
-      id: '/historico'
+    '/_authenticated/historico': {
+      id: '/_authenticated/historico'
       path: '/historico'
       fullPath: '/historico'
-      preLoaderRoute: typeof HistoricoRouteImport
+      preLoaderRoute: typeof AuthenticatedHistoricoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ofensiva': {
-      id: '/ofensiva'
+    '/_authenticated/ofensiva': {
+      id: '/_authenticated/ofensiva'
       path: '/ofensiva'
       fullPath: '/ofensiva'
-      preLoaderRoute: typeof OfensivaRouteImport
+      preLoaderRoute: typeof AuthenticatedOfensivaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/passivos': {
-      id: '/passivos'
+    '/_authenticated/passivos': {
+      id: '/_authenticated/passivos'
       path: '/passivos'
       fullPath: '/passivos'
-      preLoaderRoute: typeof PassivosRouteImport
+      preLoaderRoute: typeof AuthenticatedPassivosRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/roadmap': {
-      id: '/roadmap'
+    '/_authenticated/roadmap': {
+      id: '/_authenticated/roadmap'
       path: '/roadmap'
       fullPath: '/roadmap'
-      preLoaderRoute: typeof RoadmapRouteImport
+      preLoaderRoute: typeof AuthenticatedRoadmapRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  ComandoRoute: ComandoRoute,
-  DiaDRoute: DiaDRoute,
-  EntradasRoute: EntradasRoute,
-  HistoricoRoute: HistoricoRoute,
-  OfensivaRoute: OfensivaRoute,
-  PassivosRoute: PassivosRoute,
-  RoadmapRoute: RoadmapRoute,
+  AuthenticatedComandoRoute: AuthenticatedComandoRoute,
+  AuthenticatedDiaDRoute: AuthenticatedDiaDRoute,
+  AuthenticatedEntradasRoute: AuthenticatedEntradasRoute,
+  AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,
+  AuthenticatedOfensivaRoute: AuthenticatedOfensivaRoute,
+  AuthenticatedPassivosRoute: AuthenticatedPassivosRoute,
+  AuthenticatedRoadmapRoute: AuthenticatedRoadmapRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
