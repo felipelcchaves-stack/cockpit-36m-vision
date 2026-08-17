@@ -706,26 +706,87 @@ export function useAjustarSaldoAtivo() {
     mutationFn: async ({
       ativo,
       saldoReal,
+      rendimentoEstimado = 0,
     }: {
       ativo: Ativo;
       saldoReal: number;
+      /** Parte da diferença que é juro esperado; o resto entra como movimentação. */
+      rendimentoEstimado?: number;
     }) => {
       const hoje = new Date().toISOString().slice(0, 10);
-      const { error: errIns } = await supabase.from("rendimentos").upsert(
-        {
+      const delta = saldoReal - ativo.valor;
+      const juro = Math.abs(rendimentoEstimado) > Math.abs(delta) ? delta : rendimentoEstimado;
+      const movimento = delta - juro;
+      const linhas: Array<Record<string, unknown>> = [];
+      let saldo = ativo.valor;
+      if (juro !== 0) {
+        linhas.push({
           ativo_id: ativo.id,
           data: hoje,
-          saldo_anterior: ativo.valor,
-          juros: saldoReal - ativo.valor,
-          saldo_final: saldoReal,
+          saldo_anterior: saldo,
+          juros: juro,
+          saldo_final: saldo + juro,
+          origem: "automatico",
+        });
+        saldo += juro;
+      }
+      if (movimento !== 0) {
+        linhas.push({
+          ativo_id: ativo.id,
+          data: hoje,
+          saldo_anterior: saldo,
+          juros: movimento,
+          saldo_final: saldo + movimento,
           origem: "ajuste",
-        },
-        { onConflict: "ativo_id,data,origem" },
-      );
-      if (errIns) throw errIns;
+        });
+      }
+      if (linhas.length) {
+        const { error: errIns } = await supabase
+          .from("rendimentos")
+          .upsert(linhas, { onConflict: "ativo_id,data", ignoreDuplicates: false });
+        if (errIns) {
+          const { error: errPlain } = await supabase.from("rendimentos").insert(linhas);
+          if (errPlain) throw errPlain;
+        }
+      }
       const { error } = await supabase
         .from("ativos")
         .update({ valor: saldoReal, ultimo_fechamento: hoje })
+        .eq("id", ativo.id);
+      if (error) throw error;
+      return { juro, movimento };
+    },
+    onSuccess: () => invalidateLastro(qc),
+  });
+}
+
+/** Debita um valor do ativo (saque para amortizar passivo, por exemplo). */
+export function useDebitarAtivo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      ativo,
+      valor,
+      motivo,
+    }: {
+      ativo: Ativo;
+      valor: number;
+      motivo: string;
+    }) => {
+      const hoje = new Date().toISOString().slice(0, 10);
+      const saldoFinal = Math.max(0, ativo.valor - valor);
+      const { error: errIns } = await supabase.from("rendimentos").insert({
+        ativo_id: ativo.id,
+        data: hoje,
+        saldo_anterior: ativo.valor,
+        juros: -(ativo.valor - saldoFinal),
+        saldo_final: saldoFinal,
+        origem: `saque:${motivo}`.slice(0, 120),
+      });
+      if (errIns) throw errIns;
+      const { error } = await supabase
+        .from("ativos")
+        .update({ valor: saldoFinal })
         .eq("id", ativo.id);
       if (error) throw error;
     },
