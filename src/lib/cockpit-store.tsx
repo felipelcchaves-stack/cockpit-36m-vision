@@ -173,7 +173,10 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
           ? r.status
           : "Interessado") as EntryStatus,
         note: r.nota ?? undefined,
+        ritualDate: r.data_ritual,
+        paymentDate: r.data_pagamento,
       })),
+
     [clienteRows],
   );
 
