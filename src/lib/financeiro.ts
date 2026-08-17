@@ -153,22 +153,102 @@ export const cofreBlindado = (ativos: Ativo[]) =>
 
 /* ---------------- Fase 1: placar de fechamento ---------------- */
 
+/** Credores que precisam morrer antes do Dia D, na ordem oficial. */
+export const ALVOS_PRE_DIA_D = ["agiota", "oluwo"];
+
+const ehAlvoPreDiaD = (credor: string) =>
+  ALVOS_PRE_DIA_D.some((t) => credor.toLowerCase().includes(t));
+
 /** Agiota + Oluwo: o que precisa morrer antes do Dia D. */
-export function placarFase1(passivos: Passivo[], liquidoJaPago: number) {
-  const alvos = passivos.filter((p) =>
-    ["agiota", "oluwo"].some((t) => p.credor.toLowerCase().includes(t)),
-  );
+export function placarFase1(passivos: Passivo[], liquidoJaPago: number, pipelineLiquido = 0) {
+  const alvos = passivos.filter((p) => ehAlvoPreDiaD(p.credor));
   const emAberto = alvos.filter((p) => !isPago(p.status)).reduce((s, p) => s + p.saldo_devedor, 0);
   const total = alvos.reduce((s, p) => s + p.saldo_devedor, 0) || 352_500;
   const falta = Math.max(0, emAberto - liquidoJaPago);
+  const faltaComPipeline = Math.max(0, emAberto - pipelineLiquido);
   return {
     total,
     emAberto,
     liquidoJaPago,
+    pipelineLiquido,
     falta,
+    faltaComPipeline,
     pct: emAberto > 0 ? Math.min(100, (liquidoJaPago / emAberto) * 100) : 100,
+    pctComPipeline: emAberto > 0 ? Math.min(100, (pipelineLiquido / emAberto) * 100) : 100,
   };
 }
+
+/* ---------------- Cascata: Ofensiva da Fase 1 até o Dia D ---------------- */
+
+export type AbatePreDiaD = {
+  id: number;
+  credor: string;
+  saldo: number;
+  abatido: number;
+  restante: number;
+  extinto: boolean;
+};
+
+/**
+ * Liga a munição de rituais ao Dia D: mata Agiota → Oluwo, joga o troco na
+ * Bazuca e devolve a sobra livre depois de toda a Kill List.
+ */
+export function cascataFase1DiaD(args: {
+  passivos: Passivo[];
+  ativos: Ativo[];
+  municao: number;
+}) {
+  const { passivos, ativos } = args;
+  const municao = Math.max(0, args.municao);
+
+  let caixa = municao;
+  const abates: AbatePreDiaD[] = alvosVivos(passivos)
+    .filter((p) => ehAlvoPreDiaD(p.credor))
+    .map((p) => {
+      const abatido = Math.min(caixa, p.saldo_devedor);
+      caixa -= abatido;
+      const restante = p.saldo_devedor - abatido;
+      return {
+        id: p.id,
+        credor: p.credor,
+        saldo: p.saldo_devedor,
+        abatido,
+        restante,
+        extinto: restante === 0,
+      };
+    });
+
+  const faltaVender = abates.reduce((s, a) => s + a.restante, 0);
+  const troco = caixa;
+
+  const passivosPos = passivos.map((p) => {
+    const a = abates.find((x) => x.id === p.id);
+    if (!a) return p;
+    return { ...p, saldo_devedor: a.restante, status: a.restante === 0 ? "Pago" : p.status };
+  });
+
+  const aporte = valorAtivo(ativos, "aporte", APORTE_DIA_D);
+  const lastro = valorAtivo(ativos, "investimento", LASTRO_INVESTIMENTO);
+  const consignado = valorPassivo(passivos, "consignad", QUITACAO_CONSIGNADO);
+
+  const sim = simularDiaD(passivosPos, { aporte: aporte + troco, consignado, lastro });
+
+  return {
+    municao,
+    abates,
+    faltaVender,
+    troco,
+    aporte,
+    lastro,
+    consignado,
+    sim,
+    reserva: cofreBlindado(ativos),
+    sobraLivre: sim.sobra,
+    passivoRestante: sim.passivoRestante + faltaVender,
+  };
+}
+
+
 
 /* ---------------- Ponte de 90 dias e Virada de Chave ---------------- */
 
