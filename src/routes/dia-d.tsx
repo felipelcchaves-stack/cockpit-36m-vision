@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { Bomb, Landmark, Lock, Rocket } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
+import { PainelLastro } from "@/components/painel-lastro";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { brl } from "@/lib/cockpit-store";
@@ -43,6 +44,7 @@ function DiaD() {
   const lastroBase = valorAtivo(ativos, "investimento", LASTRO_INVESTIMENTO);
   const consignadoBase = valorPassivo(passivos, "consignad", QUITACAO_CONSIGNADO);
   const reserva = cofreBlindado(ativos);
+  const ativoLastro = ativos.find((a) => `${a.nome} ${a.tipo ?? ""}`.toLowerCase().includes("investimento"));
 
   const [pctAporte, setPctAporte] = useState(100);
   const aporte = (aporteBase * pctAporte) / 100;
@@ -68,6 +70,8 @@ function DiaD() {
         title="Operação Dia D"
         description="O dinheiro do banco cai, o lastro destrava, o consignado morre — e o que sobra vira A Bazuca."
       />
+
+      <PainelLastro ativo={ativoLastro} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
