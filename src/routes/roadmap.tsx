@@ -32,16 +32,24 @@ import { brl } from "@/lib/cockpit-store";
 import {
   previstoFase,
   realizadoFase,
+  useAtivos,
   useAtualizarTarefa,
   useCriarTarefa,
+  usePassivos,
   useRemoverTarefa,
   useRoadmap,
   useParametros,
   useSalvarParametros,
+  useTransacoes,
   type RoadmapFase,
   type RoadmapTarefa,
 } from "@/lib/cockpit-queries";
-import { pontede90Dias, viradaDeChave } from "@/lib/financeiro";
+import {
+  cascataFase1DiaD,
+  exterminioRealizado,
+  pontede90Dias,
+  viradaDeChave,
+} from "@/lib/financeiro";
 
 export const Route = createFileRoute("/roadmap")({
   head: () => ({
