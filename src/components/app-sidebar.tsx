@@ -7,6 +7,7 @@ import {
   Receipt,
   Bot,
   Bomb,
+  Crosshair,
   Crown,
 } from "lucide-react";
 
