@@ -117,9 +117,19 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const semShell = pathname.startsWith("/auth");
 
   return (
     <QueryClientProvider client={queryClient}>
+      <TemaSync />
+      <AuthSync />
+      {semShell ? (
+        <>
+          <Outlet />
+          <Toaster position="top-right" />
+        </>
+      ) : (
       <CockpitProvider>
         <SidebarProvider>
           <div className="flex min-h-screen w-full bg-background">
@@ -139,6 +149,39 @@ function RootComponent() {
           <Toaster position="top-right" />
         </SidebarProvider>
       </CockpitProvider>
+      )}
     </QueryClientProvider>
   );
+}
+
+/** Aplica o tema salvo (dark/clean) depois da hidratação e ao trocar de conta. */
+function TemaSync() {
+  const { data: perfil } = usePerfil();
+
+  useEffect(() => {
+    aplicarTema(temaSalvo());
+  }, []);
+
+  useEffect(() => {
+    if (perfil?.tema) aplicarTema(perfil.tema);
+  }, [perfil?.tema]);
+
+  return null;
+}
+
+/** Mantém router e cache alinhados com a sessão. */
+function AuthSync() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      router.invalidate();
+      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+    });
+    return () => data.subscription.unsubscribe();
+  }, [router, queryClient]);
+
+  return null;
 }
