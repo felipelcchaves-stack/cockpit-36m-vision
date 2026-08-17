@@ -29,20 +29,28 @@ import {
   potencial,
   progresso,
   realizado,
+  sequenciaDisciplina,
   sumPassivos,
   sumPoderDeFogo,
+  useAportes,
   useAtivos,
   useCrmReceitas,
+  useParametros,
   usePassivos,
+  useSalvarAporte,
 } from "@/lib/cockpit-queries";
 import {
+  APORTE_MENSAL,
   FATURA_CARTAO,
   META_PATRIMONIO,
+  RENDA_PASSIVA_ALVO,
   alertaCartao,
   cofreBlindado,
   cruzamentoMeta,
   projetar36M,
+  rendaPassivaAtual,
 } from "@/lib/financeiro";
+
 
 import { Progress } from "@/components/ui/progress";
 
