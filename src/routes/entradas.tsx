@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Plus, Trash2, ArrowRight, Minus, Pencil } from "lucide-react";
@@ -327,6 +327,7 @@ const emptyForm: ReceitaForm = {
 function CrmReceitasReais() {
   const { data = [], isLoading, error } = useCrmReceitas();
   const { data: passivos = [] } = usePassivos();
+  const { clients } = useCockpit();
   const criar = useCriarReceita();
   const atualizar = useAtualizarReceita();
   const remover = useRemoverReceita();
@@ -341,7 +342,21 @@ function CrmReceitasReais() {
   const totalBruto = data.reduce((s, r) => s + potencial(r), 0);
   const totalCusto = data.reduce((s, r) => s + (r.custo_operacao ?? 0), 0);
   const pctGeral = totalPotencial > 0 ? Math.min(100, (totalRealizado / totalPotencial) * 100) : 0;
-  const fase1 = placarFase1(passivos, totalRealizado);
+
+  // Pipeline do Kanban líquido: clientes ainda não pagos, menos o custo unitário do produto.
+  const pipelineLiquido = clients
+    .filter((c) => c.status !== "Pago")
+    .reduce((s, c) => {
+      const produto = data.find((r) => r.produto === c.type);
+      const custoUnit =
+        produto && produto.meta_quantidade > 0
+          ? (produto.custo_operacao ?? 0) / produto.meta_quantidade
+          : 0;
+      return s + Math.max(0, c.valor - custoUnit);
+    }, 0);
+
+  const fase1 = placarFase1(passivos, totalRealizado, totalRealizado + pipelineLiquido);
+
 
   const openNew = () => {
     setEditId(null);
@@ -481,6 +496,14 @@ function CrmReceitasReais() {
           Em aberto {brl(fase1.emAberto)} · líquido já capturado {brl(fase1.liquidoJaPago)} ·{" "}
           {fase1.pct.toFixed(1)}% do alvo
         </p>
+        <p className="num mt-1 text-[11px] text-muted-foreground">
+          Com o pipeline do Kanban ({brl(fase1.pipelineLiquido - fase1.liquidoJaPago)} a fechar):{" "}
+          {fase1.pctComPipeline.toFixed(1)}% do alvo · faltaria {brl(fase1.faltaComPipeline)}
+        </p>
+        <Link to="/ofensiva" className="mt-2 inline-block text-[11px] text-gold underline underline-offset-4">
+          Ver cascata completa até o Dia D
+        </Link>
+
         {fase1.falta > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {data
