@@ -276,6 +276,7 @@ type ReceitaForm = {
   ticket_medio: string;
   meta_quantidade: string;
   quantidade_realizada: string;
+  custo_operacao: string;
   status_campanha: string;
   data_ritual: string;
   data_pagamento_prevista: string;
@@ -286,6 +287,7 @@ const emptyForm: ReceitaForm = {
   ticket_medio: "",
   meta_quantidade: "",
   quantidade_realizada: "0",
+  custo_operacao: "0",
   status_campanha: "Em Captação",
   data_ritual: "",
   data_pagamento_prevista: "",
@@ -294,6 +296,7 @@ const emptyForm: ReceitaForm = {
 
 function CrmReceitasReais() {
   const { data = [], isLoading, error } = useCrmReceitas();
+  const { data: passivos = [] } = usePassivos();
   const criar = useCriarReceita();
   const atualizar = useAtualizarReceita();
   const remover = useRemoverReceita();
@@ -303,9 +306,12 @@ function CrmReceitasReais() {
   const [form, setForm] = useState<ReceitaForm>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<CrmReceita | null>(null);
 
-  const totalPotencial = data.reduce((s, r) => s + potencial(r), 0);
-  const totalRealizado = data.reduce((s, r) => s + realizado(r), 0);
+  const totalPotencial = data.reduce((s, r) => s + potencialLiquido(r), 0);
+  const totalRealizado = data.reduce((s, r) => s + realizadoLiquido(r), 0);
+  const totalBruto = data.reduce((s, r) => s + potencial(r), 0);
+  const totalCusto = data.reduce((s, r) => s + (r.custo_operacao ?? 0), 0);
   const pctGeral = totalPotencial > 0 ? Math.min(100, (totalRealizado / totalPotencial) * 100) : 0;
+  const fase1 = placarFase1(passivos, totalRealizado);
 
   const openNew = () => {
     setEditId(null);
@@ -320,6 +326,7 @@ function CrmReceitasReais() {
       ticket_medio: String(r.ticket_medio),
       meta_quantidade: String(r.meta_quantidade),
       quantidade_realizada: String(r.quantidade_realizada),
+      custo_operacao: String(r.custo_operacao ?? 0),
       status_campanha: r.status_campanha ?? "Em Captação",
       data_ritual: r.data_ritual ?? "",
       data_pagamento_prevista: r.data_pagamento_prevista ?? "",
@@ -337,10 +344,12 @@ function CrmReceitasReais() {
       ticket_medio: Number(form.ticket_medio) || 0,
       meta_quantidade: Number(form.meta_quantidade) || 0,
       quantidade_realizada: Number(form.quantidade_realizada) || 0,
+      custo_operacao: Number(form.custo_operacao) || 0,
       status_campanha: form.status_campanha,
       data_ritual: form.data_ritual || null,
       data_pagamento_prevista: form.data_pagamento_prevista || null,
     };
+
 
     try {
       if (editId === null) {
