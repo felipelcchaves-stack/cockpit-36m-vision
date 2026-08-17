@@ -74,6 +74,20 @@ function Roadmap() {
   const criar = useCriarTarefa();
   const atualizar = useAtualizarTarefa();
   const remover = useRemoverTarefa();
+  const { data: passivos = [] } = usePassivos();
+  const { data: ativos = [] } = useAtivos();
+  const { data: transacoes = [] } = useTransacoes();
+
+  // Estado real dos passivos, para que as fases reflitam o que já foi exterminado.
+  const ex = exterminioRealizado({ passivos, transacoes });
+  const cascata = cascataFase1DiaD({ passivos, ativos, municao: 0, originais: ex.originais });
+  const alvosFase1 = ex.alvos.filter((a) => a.preDiaD);
+  const fase1Cumprida = alvosFase1.length > 0 && alvosFase1.every((a) => a.extinto);
+  const alvosBazuca = cascata.sim.alvos.filter(
+    (a) => !ALVOS_FASE1.some((t) => a.credor.toLowerCase().includes(t)),
+  );
+
+
 
   const [sheet, setSheet] = useState<{ fase: RoadmapFase; tarefa: RoadmapTarefa | null } | null>(
     null,
