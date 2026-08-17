@@ -225,7 +225,7 @@ function Dashboard() {
             <ul className="mt-4 space-y-3 text-sm leading-relaxed">
               {nextTarget && (
                 <li>
-                  Apenas <span className="gold-text font-semibold">{ritualsToClear} rituais</span>{" "}
+                  Apenas <span className="gold-text font-semibold">{ritualsToClear} {ritualsToClear === 1 ? "ritual" : "rituais"}</span>{" "}
                   faltam para extinguir o passivo do{" "}
                   <span className="font-semibold">{nextTarget.name}</span>.
                 </li>
