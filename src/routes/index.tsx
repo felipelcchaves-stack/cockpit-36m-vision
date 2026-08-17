@@ -109,6 +109,23 @@ function Dashboard() {
 
 
 
+  // Ofensiva → Dia D: munição provável (clientes confirmados, líquida de custo)
+  const confirmadosLiquido = clients
+    .filter((c) => c.status === "Confirmado")
+    .reduce((s, c) => {
+      const produto = receitas.find((r) => r.produto === c.type);
+      const custoUnit =
+        produto && produto.meta_quantidade > 0
+          ? (produto.custo_operacao ?? 0) / produto.meta_quantidade
+          : 0;
+      return s + Math.max(0, c.valor - custoUnit);
+    }, 0);
+  const cascata = cascataFase1DiaD({
+    passivos: passivosRows,
+    ativos: ativosRows,
+    municao: confirmadosLiquido,
+  });
+
   const paidCreditors = creditors.filter((c) => c.balance === 0).length;
   const nextTarget = [...creditors].filter((c) => c.balance > 0).sort((a, b) => a.balance - b.balance)[0];
   const ritualsToClear = nextTarget ? Math.max(1, Math.ceil(nextTarget.balance / 30000)) : 0;
