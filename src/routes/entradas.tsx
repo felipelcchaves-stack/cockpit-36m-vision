@@ -394,11 +394,12 @@ function CrmReceitasReais() {
       {isLoading && <p className="mt-4 text-sm text-muted-foreground">Carregando receitas...</p>}
 
       <div className="mt-5 overflow-x-auto">
-        <table className="w-full min-w-[860px] text-sm">
+        <table className="w-full min-w-[1020px] text-sm">
           <thead>
             <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
               <th className="pb-3 font-medium">Produto</th>
               <th className="pb-3 font-medium">Status</th>
+              <th className="pb-3 font-medium">Datas</th>
               <th className="pb-3 font-medium">Progresso</th>
               <th className="pb-3 text-right font-medium">Ticket médio</th>
               <th className="pb-3 text-right font-medium">Meta</th>
@@ -410,6 +411,7 @@ function CrmReceitasReais() {
             {data.map((r) => (
               <tr key={r.id} className="border-t border-border/60">
                 <td className="py-3 font-medium">{r.produto}</td>
+
                 <td className="py-3">
                   <span className="rounded-full border border-gold/30 bg-gold/10 px-2.5 py-1 text-[11px] text-gold">
                     {r.status_campanha ?? "—"}
