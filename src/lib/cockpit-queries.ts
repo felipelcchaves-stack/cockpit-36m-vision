@@ -98,6 +98,51 @@ export const sumPoderDeFogo = (rows: Ativo[] = []) =>
 
 export const potencial = (r: CrmReceita) => r.ticket_medio * r.meta_quantidade;
 
+/** Valor já realizado do produto (vendas registradas x ticket). */
+export const realizado = (r: CrmReceita) => r.ticket_medio * r.quantidade_realizada;
+
+/** Percentual de avanço da meta (0-100). */
+export const progresso = (r: CrmReceita) =>
+  r.meta_quantidade > 0
+    ? Math.min(100, Math.round((r.quantidade_realizada / r.meta_quantidade) * 100))
+    : 0;
+
+const invalidateReceitas = (qc: ReturnType<typeof useQueryClient>) =>
+  void qc.invalidateQueries({ queryKey: ["crm_receitas"] });
+
+export function useCriarReceita() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CrmReceitaInput) => {
+      const { error } = await supabase.from("crm_receitas").insert(input);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateReceitas(qc),
+  });
+}
+
+export function useAtualizarReceita() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: Partial<CrmReceitaInput> & { id: number }) => {
+      const { error } = await supabase.from("crm_receitas").update(input).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateReceitas(qc),
+  });
+}
+
+export function useRemoverReceita() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase.from("crm_receitas").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateReceitas(qc),
+  });
+}
+
 export function useMarcarPassivoPago() {
   const qc = useQueryClient();
   return useMutation({
