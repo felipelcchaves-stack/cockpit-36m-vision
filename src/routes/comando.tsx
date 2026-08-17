@@ -133,12 +133,29 @@ function Comando() {
               )}
             </motion.div>
           ))}
+          {pensando && (
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-gold/15 text-gold">
+                <Bot className="size-4" />
+              </span>
+              <span className="flex items-center gap-2">
+                <Loader2 className="size-3.5 animate-spin" /> Rodando os números...
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-border/60 p-4">
           <div className="mb-3 flex flex-wrap gap-2">
             {suggestions.map((s) => (
-              <Button key={s} size="sm" variant="secondary" className="text-[11px]" onClick={() => send(s)}>
+              <Button
+                key={s}
+                size="sm"
+                variant="secondary"
+                className="text-[11px]"
+                disabled={pensando}
+                onClick={() => void send(s)}
+              >
                 {s}
               </Button>
             ))}
@@ -147,7 +164,7 @@ function Comando() {
             className="flex gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              send();
+              void send();
             }}
           >
             <Input
@@ -155,9 +172,11 @@ function Comando() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Pergunte ao CFO Virtual..."
             />
-            <Button type="submit" size="icon">
+            <Button type="submit" size="icon" disabled={pensando}>
               <Send className="size-4" />
             </Button>
+          </form>
+
           </form>
         </div>
       </div>
