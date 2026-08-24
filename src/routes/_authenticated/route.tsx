@@ -1,5 +1,8 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { CockpitProvider } from "@/lib/cockpit-store";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -8,5 +11,28 @@ export const Route = createFileRoute("/_authenticated")({
     if (error || !data.user) throw redirect({ to: "/auth" });
     return { user: data.user };
   },
-  component: () => <Outlet />,
+  component: AuthenticatedLayout,
 });
+
+function AuthenticatedLayout() {
+  return (
+    <CockpitProvider>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full bg-background">
+          <AppSidebar />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur">
+              <SidebarTrigger />
+              <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                Cockpit 36M
+              </span>
+            </header>
+            <main className="flex-1">
+              <Outlet />
+            </main>
+          </div>
+        </div>
+      </SidebarProvider>
+    </CockpitProvider>
+  );
+}
