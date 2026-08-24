@@ -4,7 +4,6 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -12,9 +11,9 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { CockpitProvider } from "@/lib/cockpit-store";
-import { AppSidebar } from "@/components/app-sidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+
+
+
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { aplicarTema, temaSalvo, usePerfil } from "@/lib/perfil-queries";
@@ -120,39 +119,13 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const semShell = pathname.startsWith("/auth");
 
   return (
     <QueryClientProvider client={queryClient}>
       <TemaSync />
       <AuthSync />
-      {semShell ? (
-        <>
-          <Outlet />
-          <Toaster position="top-right" />
-        </>
-      ) : (
-      <CockpitProvider>
-        <SidebarProvider>
-          <div className="flex min-h-screen w-full bg-background">
-            <AppSidebar />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur">
-                <SidebarTrigger />
-                <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                  Cockpit 36M
-                </span>
-              </header>
-              <main className="flex-1">
-                <Outlet />
-              </main>
-            </div>
-          </div>
-          <Toaster position="top-right" />
-        </SidebarProvider>
-      </CockpitProvider>
-      )}
+      <Outlet />
+      <Toaster position="top-right" />
     </QueryClientProvider>
   );
 }
